@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - name: Lint scripts
+        run: |
+          for f in skills/frontend-slides/runtime/deck.js skills/frontend-slides/scripts/*.mjs skills/frontend-slides/scripts/lib/*.mjs; do node --check "$f"; done
+          for f in skills/frontend-slides/scripts/*.sh; do bash -n "$f"; done
+          python3 -m py_compile skills/frontend-slides/scripts/extract-pptx.py
+
+      - name: Tests (runtime, checker, examples, docs)
+        run: npm test
+
+      - name: Screenshot example decks
+        if: always()
+        run: |
+          for f in examples/*.html; do
+            node skills/frontend-slides/scripts/check-deck.mjs "$f" --out "deck-check/$(basename "$f" .html)" || true
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: example-deck-screenshots
+          path: deck-check/
+          if-no-files-found: ignore

@@ -1,0 +1,2012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Riverside rode more bikes than buses this year</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@500;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+    <style data-deck-runtime>
+/* frontend-slides runtime 1.0.0. Generated; refresh with: node scripts/new-deck.mjs --upgrade <deck.html> */
+/* ============================================================
+   frontend-slides runtime: deck.css
+   Fixed 16:9 stage, slide visibility, build steps, motion
+   primitives, deck chrome, overview, presenter view and print.
+
+   Theme CSS goes AFTER this file. Themes style the slides; they
+   should not need to touch anything in here.
+
+   Markup contract (see reference/runtime.md):
+     <main class="deck">
+       <div class="deck-stage">
+         <section class="slide" data-label="Title"> … </section>
+       </div>
+     </main>
+   ============================================================ */
+
+/* ---------- 1. Design tokens the runtime reads ---------- */
+:root {
+    --deck-w: 1920px;              /* design width of every slide */
+    --deck-h: 1080px;              /* design height of every slide */
+    --deck-backdrop: #0d0d0d;      /* letterbox colour around the stage */
+    --slide-bg: #ffffff;           /* default slide background */
+    --deck-transition: 220ms;      /* slide cross-fade; 0ms for hard cuts */
+    --deck-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+    --deck-ui-fg: rgba(255, 255, 255, 0.86);
+    --deck-ui-bg: rgba(0, 0, 0, 0.72);
+    --deck-ui-accent: #ffffff;
+    --deck-ui-font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* ---------- 2. Viewport and stage ---------- */
+html,
+body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--deck-backdrop);
+}
+
+.deck {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--deck-backdrop);
+}
+
+/* The stage is always authored at the design size. deck.js scales
+   it with a single transform; slide content never reflows. */
+.deck-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--deck-w);
+    height: var(--deck-h);
+    overflow: hidden;
+    transform-origin: 0 0;
+}
+
+/* ---------- 3. Slides ---------- */
+.slide {
+    position: absolute;
+    inset: 0;
+    width: var(--deck-w);
+    height: var(--deck-h);
+    box-sizing: border-box;
+    overflow: hidden;
+    background: var(--slide-bg);
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+        opacity var(--deck-transition) var(--deck-ease),
+        visibility 0s linear var(--deck-transition);
+}
+
+.slide.active,
+.deck:not(.deck-ready) .slide:first-child {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+    transition:
+        opacity var(--deck-transition) var(--deck-ease),
+        visibility 0s;
+}
+
+/* Speaker notes live inside their slide but are never shown on it. */
+.slide .notes {
+    display: none !important;
+}
+
+/* Media never escapes its box by accident. */
+.slide img,
+.slide video,
+.slide canvas,
+.slide svg {
+    max-width: 100%;
+}
+
+/* ---------- 4. Build steps ----------
+   <li class="step">…</li> reveals one press at a time.
+   data-step="2" groups elements that should appear together. */
+.slide .step {
+    transition: opacity 260ms var(--deck-ease), transform 260ms var(--deck-ease);
+}
+
+.deck-ready .slide .step:not(.step-visible) {
+    visibility: hidden;
+    opacity: 0;
+}
+
+/* ---------- 5. Motion primitives ----------
+   data-animate="fade | rise | wipe | scale" plays when the slide
+   becomes active. Stagger with style="--delay: 120ms".
+   Use one or two of these per deck, not all of them. */
+@keyframes deck-fade  { from { opacity: 0; } }
+@keyframes deck-rise  { from { opacity: 0; transform: translateY(24px); } }
+@keyframes deck-scale { from { opacity: 0; transform: scale(0.97); } }
+@keyframes deck-wipe  { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+
+.deck-ready .slide [data-animate] {
+    animation-duration: var(--duration, 640ms);
+    animation-timing-function: var(--deck-ease);
+    animation-delay: var(--delay, 0ms);
+    animation-fill-mode: both;
+    animation-play-state: paused;
+}
+
+.deck-ready .slide [data-animate="fade"]  { animation-name: deck-fade; }
+.deck-ready .slide [data-animate="rise"]  { animation-name: deck-rise; }
+.deck-ready .slide [data-animate="scale"] { animation-name: deck-scale; }
+.deck-ready .slide [data-animate="wipe"]  { animation-name: deck-wipe; }
+
+.deck-ready .slide.active [data-animate] {
+    animation-play-state: running;
+}
+
+/* ---------- 6. Deck chrome (outside the slide design) ---------- */
+.deck-ui {
+    position: fixed;
+    right: 16px;
+    bottom: 14px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 9px;
+    font: 500 12px/1 var(--deck-ui-font);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    color: var(--deck-ui-fg);
+    background: var(--deck-ui-bg);
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity 240ms ease;
+    user-select: none;
+}
+
+.deck-ui.is-visible,
+.deck-ui:hover,
+.deck-ui:focus-within {
+    opacity: 1;
+}
+
+.deck-ui button {
+    all: unset;
+    cursor: pointer;
+    padding: 2px 4px;
+    color: inherit;
+}
+
+.deck-ui button:focus-visible {
+    outline: 1px solid var(--deck-ui-accent);
+}
+
+.deck-progress {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    z-index: 20;
+    height: 3px;
+    width: 100%;
+    pointer-events: none;
+}
+
+.deck-progress > span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    background: var(--deck-ui-accent);
+    opacity: 0.55;
+    transform-origin: 0 0;
+    transform: scaleX(0);
+    transition: transform 240ms var(--deck-ease);
+}
+
+.deck-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+/* Blackout (B or .) hides the stage, like a projector mute. */
+.deck.is-blackout .deck-stage {
+    visibility: hidden;
+}
+
+/* ---------- 7. Help and edit overlays ---------- */
+.deck-panel {
+    position: fixed;
+    z-index: 30;
+    font: 13px/1.5 var(--deck-ui-font);
+    color: var(--deck-ui-fg);
+    background: var(--deck-ui-bg);
+    border-radius: 3px;
+}
+
+.deck-help {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px 26px;
+    min-width: 320px;
+}
+
+.deck-help[hidden],
+.deck-editbar[hidden] {
+    display: none;
+}
+
+.deck-help h2 {
+    margin: 0 0 10px;
+    font: inherit;
+    font-weight: 600;
+}
+
+.deck-help dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 18px;
+    margin: 0;
+}
+
+.deck-help dt { color: var(--deck-ui-accent); }
+.deck-help dd { margin: 0; }
+
+.deck-editbar {
+    left: 16px;
+    top: 14px;
+    padding: 7px 11px;
+}
+
+.deck.is-editing [contenteditable="true"] {
+    outline: 1px dashed rgba(127, 127, 127, 0.55);
+    outline-offset: 4px;
+    cursor: text;
+}
+
+.deck.is-editing [contenteditable="true"]:focus {
+    outline: 2px solid rgba(127, 127, 127, 0.9);
+}
+
+/* ---------- 8. Overview grid (O) ---------- */
+.deck.is-overview .slide {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    cursor: pointer;
+    transform-origin: 0 0;
+    transition: none;
+    outline: 0 solid transparent;
+}
+
+.deck.is-overview .slide * {
+    pointer-events: none;
+}
+
+.deck.is-overview .slide .step {
+    visibility: visible;
+    opacity: 1;
+}
+
+.deck.is-overview .slide.is-focused {
+    outline: 12px solid var(--deck-ui-accent);
+}
+
+/* ---------- 9. Presenter view (S opens it in a new window) ---------- */
+body.deck-presenter {
+    overflow: hidden;
+    color: #e8e8e8;
+    background: #141414;
+    font: 15px/1.5 system-ui, sans-serif;
+}
+
+body.deck-presenter > .deck {
+    display: none;
+}
+
+.deck-presenter-view {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    grid-template-columns: 62fr 38fr;
+    grid-template-rows: auto 1fr 1fr;
+    gap: 14px;
+    padding: 14px;
+    box-sizing: border-box;
+}
+
+.deck-presenter-view header {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 28px;
+    align-items: baseline;
+    font: 500 20px/1 var(--deck-ui-font);
+    font-variant-numeric: tabular-nums;
+}
+
+.deck-presenter-view header button {
+    all: unset;
+    cursor: pointer;
+    font-size: 13px;
+    color: #9a9a9a;
+}
+
+.deck-presenter-view .pv-frame {
+    position: relative;
+    min-height: 0;
+    background: #000;
+}
+
+.deck-presenter-view .pv-frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.deck-presenter-view .pv-current { grid-row: 2 / 4; }
+.deck-presenter-view .pv-next { opacity: 0.85; }
+
+.deck-presenter-view .pv-label {
+    position: absolute;
+    left: 8px;
+    top: -2px;
+    transform: translateY(-100%);
+    font-size: 12px;
+    color: #8a8a8a;
+}
+
+.deck-presenter-view .pv-notes {
+    overflow: auto;
+    padding: 4px 6px;
+    font-size: 22px;
+    line-height: 1.45;
+}
+
+.deck-presenter-view .pv-notes:empty::before {
+    content: "No notes for this slide.";
+    color: #777;
+}
+
+/* ---------- 10. Embedded view (used inside presenter frames) ---------- */
+.deck.is-embedded ~ .deck-ui,
+.deck.is-embedded ~ .deck-progress {
+    display: none;
+}
+
+/* ---------- 11. Print and PDF: one slide per page ---------- */
+@page {
+    size: 1920px 1080px;
+    margin: 0;
+}
+
+@media print {
+    html,
+    body {
+        width: auto;
+        height: auto;
+        overflow: visible;
+        background: none;
+    }
+
+    .deck {
+        position: static;
+        overflow: visible;
+        background: none;
+    }
+
+    .deck-stage {
+        position: static;
+        transform: none !important;
+        width: auto;
+        height: auto;
+        overflow: visible;
+    }
+
+    .slide {
+        position: relative;
+        visibility: visible !important;
+        opacity: 1 !important;
+        transition: none !important;
+        break-after: page;
+        break-inside: avoid;
+    }
+
+    .slide:last-child {
+        break-after: auto;
+    }
+
+    .slide .step {
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    /* Finish every animation instantly so nothing prints mid-entrance. */
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0s !important;
+        animation-delay: 0s !important;
+        animation-iteration-count: 1 !important;
+        animation-play-state: running !important;
+        transition: none !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    .deck-ui,
+    .deck-progress,
+    .deck-panel,
+    .deck-sr {
+        display: none !important;
+    }
+}
+
+/* ---------- 12. Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --deck-transition: 0ms;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-delay: 0s !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0s !important;
+        scroll-behavior: auto !important;
+    }
+}
+</style>
+    <style data-deck-layouts>
+/* frontend-slides runtime 1.0.0. Generated; refresh with: node scripts/new-deck.mjs --upgrade <deck.html> */
+/* ============================================================
+   frontend-slides runtime: layouts.css
+   A shared vocabulary of slide layouts on a 12-column grid.
+   Themes set the tokens and restyle anything; every selector
+   here uses :where(), so any theme rule wins without !important.
+
+   Slide anatomy (all parts optional):
+     <section class="slide l-split">
+       <header class="runhead">…</header>   running head
+       <div class="body">…</div>            the layout grid
+       <footer class="foot">…</footer>      source, folio
+     </section>
+
+   Layouts: l-title l-section l-statement l-split l-list l-figure
+   l-number l-compare l-grid l-quote l-media l-bleed l-timeline
+   l-process l-table l-agenda l-dense l-closing
+   See reference/layouts.md for markup and when to use each.
+   ============================================================ */
+
+/* ---------- Tokens (themes override these) ---------- */
+:root {
+    --bg: #f4f1ea;
+    --ink: #171614;
+    --muted: #5f5b53;
+    --accent: #b8431c;
+    --rule: currentColor;
+    --on-media: #ffffff;
+    --slide-bg: var(--bg);
+
+    --font-display: Georgia, serif;
+    --font-text: Georgia, serif;
+    --font-mono: ui-monospace, Menlo, Consolas, monospace;
+
+    --cols: 12;
+    --m: 112px;            /* outer margin */
+    --m-top: 88px;
+    --m-bottom: 72px;
+    --gutter: 40px;
+    --row-gap: 48px;
+
+    --fs-number: 300px;
+    --fs-display: 156px;
+    --fs-h1: 104px;
+    --fs-h2: 68px;
+    --fs-h3: 40px;
+    --fs-lead: 36px;
+    --fs-body: 30px;
+    --fs-small: 23px;
+    --fs-label: 20px;
+
+    --lh-tight: 0.96;
+    --lh-head: 1.04;
+    --lh-body: 1.42;
+
+    --fw-display: 400;
+    --fw-head: 400;
+    --fw-text: 400;
+    --fw-strong: 600;
+    --track-label: 0.08em;
+}
+
+/* ---------- Slide frame ---------- */
+:where(.slide) {
+    display: flex;
+    flex-direction: column;
+    padding: var(--m-top) var(--m) var(--m-bottom);
+    color: var(--ink);
+    font: var(--fw-text) var(--fs-body)/var(--lh-body) var(--font-text);
+    font-kerning: normal;
+    -webkit-font-smoothing: antialiased;
+}
+
+:where(.slide) :where(h1, h2, h3, h4, p, ul, ol, dl, dd, figure, blockquote, table) {
+    margin: 0;
+}
+
+:where(.slide) :where(h1, h2, h3) {
+    font-family: var(--font-display);
+    font-weight: var(--fw-head);
+    line-height: var(--lh-head);
+    text-wrap: balance;
+}
+
+:where(.slide) :where(h1) { font-size: var(--fs-h1); line-height: var(--lh-tight); }
+:where(.slide) :where(h2) { font-size: var(--fs-h2); }
+:where(.slide) :where(h3) { font-size: var(--fs-h3); }
+:where(.slide) :where(p, li, dd) { text-wrap: pretty; hanging-punctuation: first; }
+:where(.slide) :where(strong, b) { font-weight: var(--fw-strong); }
+:where(.slide) :where(ul, ol) { padding: 0; list-style: none; }
+:where(.slide) :where(img, video) { display: block; max-width: 100%; }
+:where(.slide) :where(table) { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+:where(.slide) :where(code, pre) { font-family: var(--font-mono); font-variant-ligatures: none; }
+
+/* ---------- Running head, body grid, foot ---------- */
+:where(.slide) > :where(.runhead) {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--gutter);
+    padding-top: 14px;
+    border-top: 2px solid var(--rule);
+    font-size: var(--fs-label);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+:where(.slide) > :where(.body) {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    grid-auto-rows: auto;
+    column-gap: var(--gutter);
+    row-gap: var(--row-gap);
+    align-content: start;
+    padding-top: var(--row-gap);
+}
+
+:where(.slide) > :where(.body) > * {
+    grid-column: 1 / -1;
+}
+
+:where(.slide) > :where(.foot) {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--gutter);
+    padding-top: 24px;
+    font-size: var(--fs-small);
+    color: var(--muted);
+}
+
+:where(.slide) :where(.folio) { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* ---------- Small parts ---------- */
+:where(.slide) :where(.kicker) {
+    display: block;
+    font-family: var(--font-text);
+    font-size: var(--fs-label);
+    font-weight: var(--fw-strong);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+:where(.slide) :where(.lead) { font-size: var(--fs-lead); line-height: 1.32; color: var(--muted); }
+:where(.slide) :where(.caption, figcaption) { font-size: var(--fs-small); color: var(--muted); }
+:where(.slide) :where(.source) { font-size: var(--fs-small); color: var(--muted); }
+:where(.slide) :where(.accent) { color: var(--accent); }
+:where(.slide) :where(.value) {
+    font: var(--fw-display) var(--fs-h1)/0.95 var(--font-display);
+    letter-spacing: -0.02em;
+    font-variant-numeric: lining-nums;
+}
+:where(.slide) :where(.rule) { border-top: 2px solid var(--rule); padding-top: 20px; }
+
+/* ---------- l-title: title at the bottom left ---------- */
+:where(.l-title) > :where(.body) { align-content: end; }
+:where(.l-title) > :where(.body) > :where(h1) { grid-column: 1 / span 11; font-size: var(--fs-display); }
+:where(.l-title) > :where(.body) > :where(.lead) { grid-column: 1 / span 7; }
+
+/* ---------- l-section: big number and section name ---------- */
+:where(.l-section) > :where(.body) { align-content: end; }
+:where(.l-section) > :where(.body) > :where(.num) {
+    grid-column: 1 / span 3;
+    grid-row: 1;
+    align-self: end;
+    font: var(--fw-display) var(--fs-number)/0.78 var(--font-display);
+    color: var(--accent);
+    font-variant-numeric: lining-nums;
+}
+:where(.l-section) > :where(.body) > :where(h2) {
+    grid-column: 4 / -1;
+    grid-row: 1;
+    align-self: end;
+    font-size: var(--fs-h1);
+    line-height: var(--lh-tight);
+}
+
+/* ---------- l-statement: one sentence, large ---------- */
+:where(.l-statement) > :where(.body) { align-content: center; }
+:where(.l-statement) > :where(.body) > :where(h2, p.statement) {
+    grid-column: 1 / span 10;
+    grid-row: 1;
+    font-family: var(--font-display);
+    font-size: var(--fs-h1);
+    line-height: var(--lh-head);
+}
+:where(.l-statement) > :where(.body) > :where(.aside) {
+    grid-column: 11 / -1;
+    grid-row: 1;
+    align-self: end;
+    font-size: var(--fs-small);
+    color: var(--muted);
+}
+
+/* ---------- l-split: heading column + content column ---------- */
+:where(.l-split, .l-list, .l-figure, .l-table, .l-agenda) > :where(.body) > :where(.side) {
+    grid-column: 1 / span 4;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+:where(.l-split, .l-list, .l-figure, .l-table, .l-agenda) > :where(.body) > :where(.main) {
+    grid-column: 6 / -1;
+    grid-row: 1;
+    min-width: 0;
+}
+:where(.l-split.is-even) > :where(.body) > :where(.side) { grid-column: 1 / span 6; }
+:where(.l-split.is-even) > :where(.body) > :where(.main) { grid-column: 7 / -1; }
+
+/* ---------- l-list: numbered rows with rules ---------- */
+:where(.l-list) :where(.items) { counter-reset: item; }
+:where(.l-list) :where(.items > li) {
+    counter-increment: item;
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    padding: 20px 0 22px;
+    border-bottom: 1px solid color-mix(in srgb, var(--ink) 22%, transparent);
+}
+:where(.l-list) :where(.items > li:first-child) { border-top: 2px solid var(--rule); }
+:where(.l-list) :where(.items > li)::before {
+    content: counter(item, decimal-leading-zero);
+    padding-top: 6px;
+    font-size: var(--fs-label);
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- l-figure: chart or diagram with a takeaway column ---------- */
+:where(.l-figure) > :where(.body) > :where(.side) { grid-column: 1 / span 3; }
+:where(.l-figure) > :where(.body) > :where(figure, .main) { grid-column: 5 / -1; grid-row: 1; min-width: 0; }
+:where(.l-figure) :where(figure) { display: flex; flex-direction: column; gap: 16px; }
+:where(.l-figure) :where(figure svg, figure img) { width: 100%; height: auto; }
+
+/* ---------- l-number: one big figure with context ---------- */
+:where(.l-number) > :where(.body) { align-content: end; }
+:where(.l-number) > :where(.body) > :where(.number) {
+    grid-column: 1 / span 8;
+    grid-row: 1;
+    align-self: end;
+    font: var(--fw-display) var(--fs-number)/0.8 var(--font-display);
+    letter-spacing: -0.03em;
+    font-variant-numeric: lining-nums;
+}
+:where(.l-number) > :where(.body) > :where(.context) {
+    grid-column: 9 / -1;
+    grid-row: 1;
+    align-self: end;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* ---------- Heading on top, content anchored to the bottom ---------- */
+:where(.l-compare, .l-grid, .l-timeline, .l-process) > :where(.body) {
+    grid-template-rows: auto 1fr;
+}
+:where(.l-compare, .l-grid, .l-timeline, .l-process) > :where(.body) > :where(:last-child:not(:first-child)) {
+    align-self: end;
+}
+
+/* ---------- l-compare: two to four columns side by side ---------- */
+:where(.l-compare) :where(.cols) {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    column-gap: var(--gutter);
+}
+:where(.l-compare) :where(.cols > *) {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding-top: 20px;
+    border-top: 2px solid var(--rule);
+}
+:where(.l-compare) :where(.cols > .is-key) { border-top-color: var(--accent); }
+:where(.l-compare) :where(.cols h3) { font-size: var(--fs-h3); }
+
+/* ---------- l-grid: 2–6 items in rows, no cards ---------- */
+:where(.l-grid) :where(.items) {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 3), minmax(0, 1fr));
+    gap: 56px var(--gutter);
+}
+:where(.l-grid) :where(.items > *) { display: flex; flex-direction: column; gap: 12px; }
+:where(.l-grid) :where(.items h3) { font-size: var(--fs-lead); }
+:where(.l-grid) :where(.items p) { font-size: var(--fs-small); color: var(--muted); }
+
+/* ---------- l-quote ---------- */
+:where(.l-quote) > :where(.body) { align-content: center; }
+:where(.l-quote) > :where(.body) > :where(blockquote) {
+    grid-column: 1 / span 10;
+    font: var(--fw-display) var(--fs-h1)/var(--lh-head) var(--font-display);
+    text-wrap: balance;
+}
+:where(.l-quote) > :where(.body) > :where(.cite) { grid-column: 1 / span 6; font-size: var(--fs-small); color: var(--muted); }
+
+/* ---------- l-media: image on one side, text on the other ---------- */
+:where(.l-media) > :where(.body) > :where(.media) {
+    grid-column: 1 / span 7;
+    grid-row: 1 / span 3;
+    align-self: stretch;
+    min-height: 0;
+    overflow: hidden;
+}
+:where(.l-media) > :where(.body) > :where(.media) :where(img, video) { width: 100%; height: 100%; object-fit: cover; }
+:where(.l-media) > :where(.body) > :where(.text) {
+    grid-column: 9 / -1;
+    grid-row: 1;
+    align-self: end;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+:where(.l-media.is-right) > :where(.body) > :where(.media) { grid-column: 6 / -1; }
+:where(.l-media.is-right) > :where(.body) > :where(.text) { grid-column: 1 / span 4; }
+
+/* ---------- l-bleed: full-bleed image with text over it ---------- */
+:where(.l-bleed) { position: relative; color: var(--on-media); }
+:where(.l-bleed) > :where(.media) { position: absolute; inset: 0; z-index: 0; }
+:where(.l-bleed) > :where(.media) :where(img, video) { width: 100%; height: 100%; max-width: none; object-fit: cover; }
+:where(.l-bleed) > :where(.runhead, .body, .foot) { position: relative; z-index: 1; color: inherit; }
+:where(.l-bleed) > :where(.runhead) { border-top-color: currentColor; }
+:where(.l-bleed) > :where(.body) { align-content: end; }
+:where(.l-bleed) > :where(.body) > * { grid-column: 1 / span 7; }
+
+/* ---------- l-timeline: dated points along a line ---------- */
+:where(.l-timeline) :where(.timeline) {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    column-gap: var(--gutter);
+    border-top: 2px solid var(--rule);
+}
+:where(.l-timeline) :where(.timeline > li) { position: relative; padding-top: 36px; display: flex; flex-direction: column; gap: 10px; }
+:where(.l-timeline) :where(.timeline > li)::before {
+    content: "";
+    position: absolute;
+    top: -9px;
+    left: 0;
+    width: 16px;
+    height: 16px;
+    background: var(--bg);
+    border: 2px solid var(--rule);
+    border-radius: 50%;
+}
+:where(.l-timeline) :where(.timeline > li.is-key)::before { background: var(--accent); border-color: var(--accent); }
+:where(.l-timeline) :where(.timeline time, .timeline .when) { font-size: var(--fs-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--accent); }
+:where(.l-timeline) :where(.timeline p) { font-size: var(--fs-small); }
+
+/* ---------- l-process: numbered steps in a row ---------- */
+:where(.l-process) :where(.steps) {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    column-gap: var(--gutter);
+    counter-reset: step;
+}
+:where(.l-process) :where(.steps > li) {
+    counter-increment: step;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 20px;
+    border-top: 2px solid var(--rule);
+}
+:where(.l-process) :where(.steps > li)::before {
+    content: counter(step);
+    font: var(--fw-display) var(--fs-h1)/1 var(--font-display);
+    color: var(--accent);
+}
+:where(.l-process) :where(.steps p) { font-size: var(--fs-small); color: var(--muted); }
+
+/* ---------- l-table ---------- */
+:where(.l-table) > :where(.body) > :where(.side) { grid-column: 1 / span 3; }
+:where(.l-table) > :where(.body) > :where(.main, table) { grid-column: 5 / -1; grid-row: 1; }
+:where(.l-table.is-full) > :where(.body) > :where(.main, table) { grid-column: 1 / -1; grid-row: auto; }
+:where(.l-table) :where(table) { width: 100%; font-size: var(--fs-small); }
+:where(.l-table) :where(th) {
+    padding: 0 16px 12px 0;
+    text-align: left;
+    font-size: var(--fs-label);
+    font-weight: var(--fw-strong);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 2px solid var(--rule);
+}
+:where(.l-table) :where(td) {
+    padding: 14px 16px 14px 0;
+    vertical-align: top;
+    border-bottom: 1px solid color-mix(in srgb, var(--ink) 20%, transparent);
+}
+:where(.l-table) :where(td.num, th.num) { text-align: right; }
+
+/* ---------- l-agenda ---------- */
+:where(.l-agenda) > :where(.body) { align-content: center; }
+:where(.l-agenda) :where(.items) { counter-reset: agenda; }
+:where(.l-agenda) :where(.items > li) {
+    counter-increment: agenda;
+    display: grid;
+    grid-template-columns: 120px 1fr auto;
+    align-items: baseline;
+    padding: 16px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--ink) 22%, transparent);
+    font: var(--fw-head) var(--fs-agenda, 52px)/1.15 var(--font-display);
+    color: var(--muted);
+}
+:where(.l-agenda) :where(.items > li)::before { content: counter(agenda, decimal-leading-zero); font-size: var(--fs-label); }
+:where(.l-agenda) :where(.items > li.is-current) { color: var(--ink); }
+:where(.l-agenda) :where(.items > li.is-current)::before { color: var(--accent); }
+:where(.l-agenda) :where(.items .when) { font: var(--fs-small) var(--font-text); }
+
+/* ---------- l-dense: reading-first text in columns ---------- */
+:where(.l-dense) :where(.columns) {
+    columns: var(--text-cols, 3);
+    column-gap: var(--gutter);
+    font-size: var(--fs-small);
+    line-height: 1.45;
+}
+:where(.l-dense) :where(.columns > * + *) { margin-top: 0.7em; }
+:where(.l-dense) :where(.columns h3) { font-size: var(--fs-body); break-after: avoid; }
+
+/* ---------- l-closing ---------- */
+:where(.l-closing) > :where(.body) { align-content: center; }
+:where(.l-closing) > :where(.body) > :where(h2, p.statement) {
+    grid-column: 1 / span 10;
+    font: var(--fw-display) var(--fs-display)/var(--lh-tight) var(--font-display);
+}
+:where(.l-closing) > :where(.body) > :where(.lead, .contact) { grid-column: 1 / span 7; }
+</style>
+    <style data-deck-theme>
+/* ===== THEME: Broadsheet =====
+   Tradition: the front page of a daily newspaper. Heavy Franklin-style
+   grotesque for headlines, a sturdy serif for reading, newsprint paper,
+   black ink and one red for what matters. Hairline column rules.
+   Grid: 12 columns, 112px margins, 40px gutters. */
+:root {
+    --deck-backdrop: #1a1916;
+    --deck-ui-accent: #b3261e;
+    --bg: #f2efe6;
+    --ink: #121212;
+    --muted: #55524b;
+    --accent: #b3261e;
+    --font-display: "Libre Franklin", "Franklin Gothic Medium", Arial, sans-serif;
+    --font-text: "Source Serif 4", Georgia, serif;
+    --fw-display: 800;
+    --fw-head: 700;
+    --fs-display: 150px;
+    --fs-h1: 96px;
+    --fs-h2: 64px;
+    --lh-tight: 0.94;
+    --lh-head: 1.02;
+}
+
+/* === Headlines: tight grotesque, slight negative tracking === */
+.slide h1,
+.slide h2,
+.slide h3 {
+    letter-spacing: -0.02em;
+}
+
+/* === Running head reads like a newspaper folio line === */
+.slide > .runhead {
+    border-top-width: 4px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.slide > .runhead span + span {
+    color: var(--muted);
+    font-weight: 500;
+}
+
+/* === Statements and quotes use the reading serif, not the grotesque === */
+.l-statement .statement,
+.l-quote blockquote {
+    font-family: var(--font-text);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+}
+
+.l-quote blockquote::before {
+    content: "\201C";
+    display: block;
+    height: 0.45em;
+    font: 800 1.6em/1 var(--font-display);
+    color: var(--accent);
+}
+
+/* === Big numbers in the headline face === */
+.l-number .number,
+.l-section .num {
+    font-weight: 800;
+}
+
+/* === Charts === */
+.chart text { font: 500 22px var(--font-display); fill: var(--muted); }
+.chart .bar { fill: color-mix(in srgb, var(--ink) 78%, transparent); }
+.chart .bar.is-key { fill: var(--accent); }
+.chart .axis { stroke: var(--ink); stroke-width: 2; }
+.chart .label { fill: var(--ink); font-weight: 700; }
+
+/* === Street-map illustration used as the picture on media slides === */
+.map { width: 100%; height: 100%; background: #e4dfd2; }
+.map path { fill: none; stroke: #121212; }
+.map .street { stroke-width: 3; opacity: 0.55; }
+.map .route { stroke: var(--accent); stroke-width: 10; stroke-linecap: round; }
+.l-bleed .map { background: #1d1c19; }
+.l-bleed .map .street { stroke: #f2efe6; opacity: 0.25; }
+
+.l-bleed .body h2 { font-size: var(--fs-h1); }
+.l-bleed > .runhead,
+.l-bleed > .runhead span + span { color: inherit; }
+
+/* === Closing slide in reverse === */
+.l-closing {
+    --bg: #121212;
+    --ink: #f2efe6;
+    --muted: #b9b4a8;
+    --rule: #f2efe6;
+    background: var(--bg);
+}
+    </style>
+</head>
+<body>
+    <main class="deck">
+      <div class="deck-stage">
+        <section class="slide l-title" data-label="Title">
+            <header class="runhead"><span>The Ledger &middot; City transport desk</span><span>Layout gallery</span></header>
+            <div class="body">
+                <span class="kicker" data-animate="fade">Annual review</span>
+                <h1 data-animate="rise">Riverside rode more bikes than buses this year</h1>
+                <p class="lead" data-animate="fade" style="--delay: 160ms">What changed on the network, who it reached, and what the council should fund next.</p>
+            </div>
+            <footer class="foot"><span>Illustrative data &middot; Riverside Transport Office</span><span class="folio">1</span></footer>
+            <aside class="notes">l-title. Title bottom left, kicker above, lead below.</aside>
+        </section>
+
+        <section class="slide l-agenda" data-label="Agenda">
+            <header class="runhead"><span>The Ledger</span><span>Contents</span></header>
+            <div class="body">
+                <div class="side"><h2>In this review</h2></div>
+                <ol class="items main">
+                    <li class="is-current">The year in numbers <span class="when">3 min</span></li>
+                    <li>Where the new lanes went <span class="when">5 min</span></li>
+                    <li>Who started riding <span class="when">5 min</span></li>
+                    <li>What it cost <span class="when">4 min</span></li>
+                    <li>What we fund next <span class="when">8 min</span></li>
+                </ol>
+            </div>
+            <footer class="foot"><span class="folio">2</span></footer>
+        </section>
+
+        <section class="slide l-section" data-label="Section: numbers">
+            <header class="runhead"><span>The Ledger</span><span>Part one</span></header>
+            <div class="body">
+                <span class="num">01</span>
+                <h2>The year in numbers</h2>
+            </div>
+            <footer class="foot"><span class="folio">3</span></footer>
+        </section>
+
+        <section class="slide l-number" data-label="Big number">
+            <header class="runhead"><span>The year in numbers</span><span>Ridership</span></header>
+            <div class="body">
+                <p class="number" data-animate="rise">4.2m</p>
+                <div class="context">
+                    <h3>bike trips logged on city counters</h3>
+                    <p class="caption">Up from 2.9m last year. Buses carried 3.8m trips on the same corridors.</p>
+                </div>
+            </div>
+            <footer class="foot"><span class="source">Source: automatic counters at 41 sites</span><span class="folio">4</span></footer>
+        </section>
+
+        <section class="slide l-statement" data-label="Statement">
+            <header class="runhead"><span>The year in numbers</span><span>The headline</span></header>
+            <div class="body">
+                <p class="statement">Most of the growth came from people who did not own a bike a year ago.</p>
+                <p class="aside">Share programme sign-ups tripled after the river crossing opened in May.</p>
+            </div>
+            <footer class="foot"><span class="folio">5</span></footer>
+        </section>
+
+        <section class="slide l-figure" data-label="Chart">
+            <header class="runhead"><span>The year in numbers</span><span>By month</span></header>
+            <div class="body">
+                <div class="side">
+                    <h2>The bridge changed the curve</h2>
+                    <p class="caption">Monthly bike trips, thousands. The crossing opened in May.</p>
+                </div>
+                <figure>
+                    <svg class="chart" viewBox="0 0 1000 520" role="img" aria-label="Monthly bike trips rise sharply from May">
+                        <g transform="translate(0,460)">
+                            <rect class="bar" x="10"  y="-150" width="60" height="150"/>
+                            <rect class="bar" x="93"  y="-160" width="60" height="160"/>
+                            <rect class="bar" x="176" y="-190" width="60" height="190"/>
+                            <rect class="bar" x="259" y="-210" width="60" height="210"/>
+                            <rect class="bar is-key" x="342" y="-330" width="60" height="330"/>
+                            <rect class="bar" x="425" y="-370" width="60" height="370"/>
+                            <rect class="bar" x="508" y="-400" width="60" height="400"/>
+                            <rect class="bar" x="591" y="-410" width="60" height="410"/>
+                            <rect class="bar" x="674" y="-380" width="60" height="380"/>
+                            <rect class="bar" x="757" y="-350" width="60" height="350"/>
+                            <rect class="bar" x="840" y="-300" width="60" height="300"/>
+                            <rect class="bar" x="923" y="-260" width="60" height="260"/>
+                            <line class="axis" x1="0" x2="1000" y1="0" y2="0"/>
+                            <text x="40" y="40" text-anchor="middle">J</text><text x="123" y="40" text-anchor="middle">F</text>
+                            <text x="206" y="40" text-anchor="middle">M</text><text x="289" y="40" text-anchor="middle">A</text>
+                            <text x="372" y="40" text-anchor="middle" class="label">M</text><text x="455" y="40" text-anchor="middle">J</text>
+                            <text x="538" y="40" text-anchor="middle">J</text><text x="621" y="40" text-anchor="middle">A</text>
+                            <text x="704" y="40" text-anchor="middle">S</text><text x="787" y="40" text-anchor="middle">O</text>
+                            <text x="870" y="40" text-anchor="middle">N</text><text x="953" y="40" text-anchor="middle">D</text>
+                            <text x="372" y="-345" text-anchor="middle" class="label">Bridge opens</text>
+                        </g>
+                    </svg>
+                </figure>
+            </div>
+            <footer class="foot"><span class="source">Source: automatic counters</span><span class="folio">6</span></footer>
+        </section>
+
+        <section class="slide l-media" data-label="Image and text">
+            <header class="runhead"><span>Where the lanes went</span><span>The network</span></header>
+            <div class="body">
+                <div class="media">
+                    <svg class="map" viewBox="0 0 800 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                        <path class="street" d="M0 80H800M0 210H800M0 340H800M0 470H800M0 600H800M90 0V700M240 0V700M390 0V700M540 0V700M690 0V700"/>
+                        <path class="route" d="M90 600V340H390V210H690V80"/>
+                    </svg>
+                </div>
+                <div class="text">
+                    <h2>Eleven kilometres of protected lane</h2>
+                    <p>Built as one connected route from the estates in the south to the station, instead of disconnected stretches.</p>
+                </div>
+            </div>
+            <footer class="foot"><span class="folio">7</span></footer>
+        </section>
+
+        <section class="slide l-split" data-label="Split">
+            <header class="runhead"><span>Where the lanes went</span><span>Design choices</span></header>
+            <div class="body">
+                <div class="side">
+                    <h2>Kerbs, not paint</h2>
+                    <p class="lead">Every new metre is physically separated from traffic.</p>
+                </div>
+                <div class="main">
+                    <p>Painted lanes were cheaper but did not change who rode. Counts on the two painted corridors rose 4%; on kerbed corridors they rose 61%.</p>
+                    <p style="margin-top: 28px">The extra cost was about 18% per kilometre, mostly drainage work that the roads budget had already scheduled.</p>
+                </div>
+            </div>
+            <footer class="foot"><span class="folio">8</span></footer>
+        </section>
+
+        <section class="slide l-list" data-label="List with steps">
+            <header class="runhead"><span>Who started riding</span><span>Findings</span></header>
+            <div class="body">
+                <div class="side"><h2>Three groups drove the growth</h2></div>
+                <ol class="items main">
+                    <li class="step"><span><strong>Shift workers</strong> at the hospital, who had no bus before 6am.</span></li>
+                    <li class="step"><span><strong>Secondary pupils</strong> from the southern estates, now that the route is continuous.</span></li>
+                    <li class="step"><span><strong>Over-60s</strong> on e-bikes from the share scheme, up fivefold.</span></li>
+                </ol>
+            </div>
+            <footer class="foot"><span class="source">Source: rider survey, n = 2,140</span><span class="folio">9</span></footer>
+            <aside class="notes">Each finding appears on a press.</aside>
+        </section>
+
+        <section class="slide l-compare" data-label="Compare">
+            <header class="runhead"><span>What it cost</span><span>Three options</span></header>
+            <div class="body">
+                <h2>What the same money buys</h2>
+                <div class="cols">
+                    <div><p class="value">11 km</p><h3>Protected lanes</h3><p class="caption">Highest new riders per pound</p></div>
+                    <div class="is-key"><p class="value">600</p><h3>Share e-bikes</h3><p class="caption">Fastest to deliver; reaches older riders</p></div>
+                    <div><p class="value">4</p><h3>Bus priority corridors</h3><p class="caption">Helps existing riders more than new ones</p></div>
+                </div>
+            </div>
+            <footer class="foot"><span class="folio">10</span></footer>
+        </section>
+
+        <section class="slide l-table" data-label="Table">
+            <header class="runhead"><span>What it cost</span><span>Spend</span></header>
+            <div class="body">
+                <div class="side"><h2>Where the money went</h2><p class="caption">£ millions, capital and first-year running costs</p></div>
+                <table class="main">
+                    <thead><tr><th>Item</th><th class="num">Budget</th><th class="num">Actual</th><th class="num">Diff.</th></tr></thead>
+                    <tbody>
+                        <tr><td>River crossing</td><td class="num">14.0</td><td class="num">15.2</td><td class="num">+1.2</td></tr>
+                        <tr><td>Protected lanes</td><td class="num">6.5</td><td class="num">6.1</td><td class="num">&minus;0.4</td></tr>
+                        <tr><td>Share scheme</td><td class="num">2.2</td><td class="num">2.4</td><td class="num">+0.2</td></tr>
+                        <tr><td>Junction redesign</td><td class="num">3.1</td><td class="num">2.8</td><td class="num">&minus;0.3</td></tr>
+                        <tr><td><strong>Total</strong></td><td class="num"><strong>25.8</strong></td><td class="num"><strong>26.5</strong></td><td class="num"><strong>+0.7</strong></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <footer class="foot"><span class="folio">11</span></footer>
+        </section>
+
+        <section class="slide l-timeline" data-label="Timeline">
+            <header class="runhead"><span>What we fund next</span><span>Schedule</span></header>
+            <div class="body">
+                <h2>The next eighteen months</h2>
+                <ol class="timeline">
+                    <li><span class="when">Jan</span><p>Consult on the eastern route</p></li>
+                    <li><span class="when">Apr</span><p>School streets at six sites</p></li>
+                    <li class="is-key"><span class="when">Sep</span><p>Eastern route construction starts</p></li>
+                    <li><span class="when">Mar</span><p>Share scheme reaches 1,000 bikes</p></li>
+                    <li><span class="when">Jun</span><p>Second annual review</p></li>
+                </ol>
+            </div>
+            <footer class="foot"><span class="folio">12</span></footer>
+        </section>
+
+        <section class="slide l-process" data-label="Process">
+            <header class="runhead"><span>What we fund next</span><span>Method</span></header>
+            <div class="body">
+                <h2>How a street gets chosen</h2>
+                <ol class="steps">
+                    <li><h3>Count</h3><p>Where people already ride despite the danger.</p></li>
+                    <li><h3>Map gaps</h3><p>Where a short link would join two routes.</p></li>
+                    <li><h3>Ask</h3><p>Residents and businesses on the street.</p></li>
+                    <li><h3>Trial</h3><p>Temporary kerbs for six months first.</p></li>
+                </ol>
+            </div>
+            <footer class="foot"><span class="folio">13</span></footer>
+        </section>
+
+        <section class="slide l-grid" data-label="Grid">
+            <header class="runhead"><span>What we fund next</span><span>Proposals</span></header>
+            <div class="body">
+                <h2>Six proposals for next year</h2>
+                <div class="items">
+                    <div><h3>Eastern route</h3><p>Repeat the southern route's design on the other side of the river.</p></div>
+                    <div><h3>School streets</h3><p>Close six school roads to cars at drop-off times.</p></div>
+                    <div><h3>Night buses</h3><p>Cover shift workers who cannot cycle in winter.</p></div>
+                    <div><h3>Secure parking</h3><p>Lockers at the station and the three estates.</p></div>
+                    <div><h3>Cargo bikes</h3><p>A loan scheme for shops on the high street.</p></div>
+                    <div><h3>Junction fixes</h3><p>Four junctions with the most near misses.</p></div>
+                </div>
+            </div>
+            <footer class="foot"><span class="folio">14</span></footer>
+        </section>
+
+        <section class="slide l-quote" data-label="Quote">
+            <header class="runhead"><span>Who started riding</span><span>In their words</span></header>
+            <div class="body">
+                <blockquote>I used to wait forty minutes for the first bus. Now I am at the ward before it leaves the depot.</blockquote>
+                <p class="cite">Night nurse, Riverside General, from the rider survey</p>
+            </div>
+            <footer class="foot"><span class="folio">15</span></footer>
+        </section>
+
+        <section class="slide l-bleed" data-label="Full bleed">
+            <div class="media">
+                <svg class="map" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                    <path class="street" d="M0 120H1920M0 300H1920M0 480H1920M0 660H1920M0 840H1920M0 1020H1920M160 0V1080M420 0V1080M680 0V1080M940 0V1080M1200 0V1080M1460 0V1080M1720 0V1080"/>
+                    <path class="route" d="M160 1020V660H680V480H1200V300H1720V120"/>
+                </svg>
+            </div>
+            <header class="runhead"><span>Where the lanes went</span><span>The route</span></header>
+            <div class="body">
+                <h2>One line, south to station</h2>
+                <p class="lead" style="color: inherit; opacity: 0.8">Built in a single season instead of over five.</p>
+            </div>
+            <footer class="foot" style="color: inherit"><span class="folio">16</span></footer>
+        </section>
+
+        <section class="slide l-dense" data-label="Appendix">
+            <header class="runhead"><span>Appendix</span><span>Method notes</span></header>
+            <div class="body">
+                <h2>How the figures were produced</h2>
+                <div class="columns">
+                    <h3>Counters</h3>
+                    <p>Trips come from 41 automatic counters. Each counter records passing bikes with an induction loop; we exclude days when a counter was offline for more than two hours and fill those days from the same weekday in the surrounding fortnight.</p>
+                    <h3>Survey</h3>
+                    <p>The rider survey ran for four weeks in October. Riders were approached at nine sites at different times of day, including two night sessions at the hospital. Responses are weighted to match the counter totals by site.</p>
+                    <h3>Costs</h3>
+                    <p>Costs are outturn figures from the capital programme, plus the first full year of running costs for the share scheme. They exclude staff time from the transport office.</p>
+                    <h3>Limits</h3>
+                    <p>Counters miss riders on streets without one, so the city-wide total is an estimate. Year-on-year comparisons use only the 33 counters that ran for both years.</p>
+                </div>
+            </div>
+            <footer class="foot"><span class="folio">17</span></footer>
+        </section>
+
+        <section class="slide l-closing" data-label="Close">
+            <header class="runhead"><span>The Ledger</span><span>End</span></header>
+            <div class="body">
+                <p class="statement">Fund the eastern route.</p>
+                <p class="lead">Questions to the transport desk: transport@riverside.example</p>
+            </div>
+            <footer class="foot"><span class="folio">18</span></footer>
+        </section>
+      </div>
+    </main>
+    <script data-deck-runtime>
+/* frontend-slides runtime 1.0.0. Generated; refresh with: node scripts/new-deck.mjs --upgrade <deck.html> */
+/* ============================================================
+   frontend-slides runtime: deck.js
+   Zero-dependency controller for fixed-stage HTML decks.
+
+   What it does
+   - Scales the 1920×1080 stage to any window (letterboxed, no reflow)
+   - Keyboard, clicker, wheel, swipe and tap navigation
+   - Build steps (.step / data-step) and motion primitives (data-animate)
+   - Deep links: #/7 opens slide 7, #/7/2 opens it with two steps shown
+   - Overview grid (O), blackout (B or .), fullscreen (F), help (?)
+   - Presenter view (S): current + next slide, notes, timer, synced
+   - Inline editing (E) with Cmd/Ctrl+S to download the edited file
+   - Print / PDF: one slide per page with everything revealed
+   - Screen-reader announcements and inert hidden slides
+
+   Public API: window.deck (see reference/runtime.md)
+   Events: "deck:ready" and "deck:change" bubble from .deck
+   ============================================================ */
+(() => {
+    'use strict';
+
+    const VERSION = '1.0.0';
+    const MSG = 'frontend-slides';
+    const UI_ATTR = 'data-deck-ui';
+    const EDITABLE = 'h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption,caption,td,th,dt,dd,label,small,[data-editable]';
+    const params = new URLSearchParams(location.search);
+    const MODE = params.has('presenter') ? 'presenter' : params.has('embed') ? 'embed' : 'audience';
+
+    const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+    const el = (tag, attrs = {}, html = '') => {
+        const node = document.createElement(tag);
+        for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+        if (html) node.innerHTML = html;
+        return node;
+    };
+    const isTyping = (target) =>
+        target instanceof Element &&
+        (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+
+    function urlFor(mode, index, step) {
+        const u = new URL(location.href);
+        u.search = mode ? '?' + mode : '';
+        u.hash = hashFor(index, step);
+        return u.href;
+    }
+
+    function hashFor(index, step) {
+        return '#/' + (index + 1) + (step ? '/' + step : '');
+    }
+
+    function parseHash() {
+        const m = location.hash.match(/^#\/?(\d+)(?:\/(\d+))?$/);
+        return m ? { index: parseInt(m[1], 10) - 1, step: m[2] ? parseInt(m[2], 10) : 0 } : null;
+    }
+
+    class Deck {
+        constructor(root) {
+            this.root = root;
+            this.stage = root.querySelector(':scope > .deck-stage') || this.wrapStage();
+            this.slides = Array.from(this.stage.querySelectorAll(':scope > .slide'));
+            this.width = parseInt(root.dataset.width, 10) || 1920;
+            this.height = parseInt(root.dataset.height, 10) || 1080;
+            this.index = 0;
+            this.step = 0;
+            this.peers = new Set();
+            this.listeners = {};
+            this.dirty = false;
+            this.overviewFocus = 0;
+            this.typedNumber = '';
+            this.steps = this.slides.map((s) => this.collectSteps(s));
+            this.labels = this.slides.map((s, i) => this.labelFor(s, i));
+        }
+
+        /* ---------- setup ---------- */
+
+        wrapStage() {
+            const stage = el('div', { class: 'deck-stage' });
+            while (this.root.firstChild) stage.appendChild(this.root.firstChild);
+            this.root.appendChild(stage);
+            return stage;
+        }
+
+        collectSteps(slide) {
+            // Plain .step elements appear one per press in DOM order (1, 2, 3…).
+            // data-step="N" puts an element on press N, so equal numbers appear together.
+            const groups = new Map();
+            let auto = 0;
+            for (const node of slide.querySelectorAll('.step')) {
+                const explicit = parseInt(node.dataset.step, 10);
+                const key = Number.isFinite(explicit) ? explicit : ++auto;
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(node);
+            }
+            return [...groups.keys()].sort((a, b) => a - b).map((k) => groups.get(k));
+        }
+
+        labelFor(slide, i) {
+            const explicit = slide.dataset.label;
+            if (explicit) return explicit;
+            const h = slide.querySelector('h1,h2,h3');
+            const text = h ? h.textContent.replace(/\s+/g, ' ').trim() : '';
+            return text ? text.slice(0, 80) : 'Slide ' + (i + 1);
+        }
+
+        init() {
+            const { root } = this;
+            root.style.setProperty('--deck-w', this.width + 'px');
+            root.style.setProperty('--deck-h', this.height + 'px');
+            if (this.width !== 1920 || this.height !== 1080) {
+                const page = el('style', { [UI_ATTR]: '' });
+                page.textContent = `@page { size: ${this.width}px ${this.height}px; margin: 0; }`;
+                document.head.appendChild(page);
+            }
+            if (!root.hasAttribute('aria-label')) {
+                root.setAttribute('aria-label', document.title || 'Slide deck');
+                this.autoLabel = true;
+            }
+            root.setAttribute('aria-roledescription', 'slide deck');
+            this.slides.forEach((s, i) => {
+                s.setAttribute('role', 'group');
+                s.setAttribute('aria-roledescription', 'slide');
+                s.setAttribute('aria-label', `${i + 1} of ${this.slides.length}: ${this.labels[i]}`);
+            });
+
+            if (MODE === 'presenter') return this.initPresenter();
+
+            this.buildChrome();
+            this.bindInput();
+            this.bindSync();
+            this.fit();
+            new ResizeObserver(() => this.fit()).observe(root);
+            window.addEventListener('beforeprint', () => this.setPrintMode(true));
+            window.addEventListener('afterprint', () => this.setPrintMode(false));
+            window.addEventListener('hashchange', () => {
+                const h = parseHash();
+                if (h && (h.index !== this.index || h.step !== this.step)) this.goTo(h.index, h.step, 'hash');
+            });
+
+            const h = parseHash();
+            this.goTo(h ? h.index : 0, h ? h.step : 0, 'init');
+            root.classList.add('deck-ready');
+            this.emit('deck:ready', { total: this.slides.length });
+        }
+
+        buildChrome() {
+            const ui = [];
+            if (MODE === 'embed') {
+                this.root.classList.add('is-embedded');
+            }
+            this.live = el('div', { class: 'deck-sr', 'aria-live': 'polite', [UI_ATTR]: '' });
+            ui.push(this.live);
+
+            const chrome = this.root.dataset.ui !== 'none' && MODE !== 'embed';
+            if (chrome) {
+                this.ui = el('div', { class: 'deck-ui', role: 'toolbar', 'aria-label': 'Deck controls', [UI_ATTR]: '' },
+                    '<button type="button" data-act="prev" aria-label="Previous">&#8592;</button>' +
+                    '<span class="deck-counter"></span>' +
+                    '<button type="button" data-act="next" aria-label="Next">&#8594;</button>' +
+                    '<button type="button" data-act="help" aria-label="Keyboard shortcuts">?</button>');
+                this.ui.addEventListener('click', (e) => {
+                    const act = e.target.closest('button')?.dataset.act;
+                    if (act === 'prev') this.prev();
+                    if (act === 'next') this.next();
+                    if (act === 'help') this.toggleHelp();
+                });
+                this.counter = this.ui.querySelector('.deck-counter');
+                ui.push(this.ui);
+                if (this.root.dataset.progress !== 'off') {
+                    this.progress = el('div', { class: 'deck-progress', 'aria-hidden': 'true', [UI_ATTR]: '' }, '<span></span>');
+                    ui.push(this.progress);
+                }
+            }
+
+            this.help = el('div', { class: 'deck-panel deck-help', role: 'dialog', 'aria-label': 'Keyboard shortcuts', hidden: '', [UI_ATTR]: '' },
+                '<h2>Keyboard</h2><dl>' +
+                '<dt>&#8594; Space PgDn</dt><dd>Next step or slide</dd>' +
+                '<dt>&#8592; PgUp</dt><dd>Previous</dd>' +
+                '<dt>Home / End</dt><dd>First / last slide</dd>' +
+                '<dt>12 Enter</dt><dd>Go to slide 12</dd>' +
+                '<dt>O</dt><dd>Overview</dd>' +
+                '<dt>S</dt><dd>Presenter view</dd>' +
+                '<dt>F</dt><dd>Fullscreen</dd>' +
+                '<dt>B or .</dt><dd>Black screen</dd>' +
+                '<dt>E</dt><dd>Edit text, then Cmd/Ctrl+S to save</dd>' +
+                '<dt>Esc</dt><dd>Close</dd></dl>');
+            this.editbar = el('div', { class: 'deck-panel deck-editbar', hidden: '', [UI_ATTR]: '' },
+                'Editing &middot; Cmd/Ctrl+S saves a copy &middot; Esc to finish');
+            ui.push(this.help, this.editbar);
+
+            const anchor = this.root.nextSibling;
+            for (const node of ui) this.root.parentNode.insertBefore(node, anchor);
+        }
+
+        /* ---------- scaling ---------- */
+
+        fit() {
+            if (this.root.classList.contains('is-print')) return;
+            const vw = this.root.clientWidth;
+            const vh = this.root.clientHeight;
+            if (!vw || !vh) return;
+            const s = Math.min(vw / this.width, vh / this.height);
+            const x = (vw - this.width * s) / 2;
+            const y = (vh - this.height * s) / 2;
+            this.scale = s;
+            this.stage.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
+            this.root.style.setProperty('--deck-scale', String(s));
+            if (this.root.classList.contains('is-overview')) this.layoutOverview();
+        }
+
+        /* ---------- navigation ---------- */
+
+        get total() {
+            return this.slides.length;
+        }
+
+        next() {
+            if (this.step < this.steps[this.index].length) return this.goTo(this.index, this.step + 1, 'next');
+            if (this.index < this.total - 1) this.goTo(this.index + 1, 0, 'next');
+        }
+
+        prev() {
+            if (this.step > 0) return this.goTo(this.index, this.step - 1, 'prev');
+            if (this.index > 0) this.goTo(this.index - 1, this.steps[this.index - 1].length, 'prev');
+        }
+
+        goTo(index, step = 0, reason = 'api') {
+            if (!this.total) return;
+            const previous = this.index;
+            const first = reason === 'init';
+            this.index = clamp(Number(index) || 0, 0, this.total - 1);
+            this.step = clamp(Number(step) || 0, 0, this.steps[this.index].length);
+            this.render(first || previous !== this.index);
+            if (reason !== 'sync') this.broadcast();
+            this.emit('deck:change', {
+                index: this.index,
+                previousIndex: first ? -1 : previous,
+                step: this.step,
+                total: this.total,
+                slide: this.slides[this.index],
+                reason,
+            });
+        }
+
+        render(slideChanged) {
+            this.slides.forEach((s, i) => {
+                const on = i === this.index;
+                s.classList.toggle('active', on);
+                s.toggleAttribute('inert', !on);
+                s.setAttribute('aria-hidden', on ? 'false' : 'true');
+            });
+            this.steps[this.index].forEach((group, g) =>
+                group.forEach((n) => n.classList.toggle('step-visible', g < this.step)));
+            if (slideChanged) {
+                // Steps on other slides reset so they replay next time.
+                this.steps.forEach((groups, i) => {
+                    if (i !== this.index) groups.flat().forEach((n) => n.classList.remove('step-visible'));
+                });
+                this.replayAnimations(this.slides[this.index]);
+                if (this.live) this.live.textContent = this.slides[this.index].getAttribute('aria-label');
+            }
+            const hash = hashFor(this.index, this.step);
+            if (location.hash !== hash) {
+                try { history.replaceState(null, '', hash); } catch (_) { /* file:// in some browsers */ }
+            }
+            if (this.counter) this.counter.textContent = `${this.index + 1} / ${this.total}`;
+            if (this.progress) {
+                const p = this.total > 1 ? this.index / (this.total - 1) : 1;
+                this.progress.firstChild.style.transform = `scaleX(${p})`;
+            }
+        }
+
+        replayAnimations(slide) {
+            for (const node of slide.querySelectorAll('[data-animate]')) {
+                if (!node.getAnimations) continue;
+                for (const a of node.getAnimations()) {
+                    try { a.currentTime = 0; } catch (_) { /* ignore */ }
+                }
+            }
+        }
+
+        /* ---------- input ---------- */
+
+        bindInput() {
+            if (MODE === 'embed') return;
+            document.addEventListener('keydown', (e) => this.onKey(e));
+
+            let idle;
+            const wake = () => {
+                if (!this.ui) return;
+                this.ui.classList.add('is-visible');
+                clearTimeout(idle);
+                idle = setTimeout(() => this.ui.classList.remove('is-visible'), 1800);
+            };
+            document.addEventListener('mousemove', wake, { passive: true });
+            this.wake = wake;
+
+            if (this.root.dataset.wheel !== 'off') {
+                let acc = 0;
+                let lock = 0;
+                this.root.addEventListener('wheel', (e) => {
+                    if (e.ctrlKey || this.root.classList.contains('is-overview') || this.editing) return;
+                    const now = Date.now();
+                    if (now < lock) return;
+                    acc += Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+                    if (Math.abs(acc) < 60) return;
+                    acc > 0 ? this.next() : this.prev();
+                    acc = 0;
+                    lock = now + 650;
+                }, { passive: true });
+            }
+
+            let sx = 0;
+            let sy = 0;
+            this.root.addEventListener('touchstart', (e) => {
+                sx = e.touches[0].clientX;
+                sy = e.touches[0].clientY;
+            }, { passive: true });
+            this.root.addEventListener('touchend', (e) => {
+                if (this.editing) return;
+                const dx = e.changedTouches[0].clientX - sx;
+                const dy = e.changedTouches[0].clientY - sy;
+                if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) dx < 0 ? this.next() : this.prev();
+            }, { passive: true });
+
+            // Touch screens: tap the left third to go back, anywhere else to go on.
+            // Taps on links, buttons, media and form fields keep working normally.
+            const coarse = matchMedia('(hover: none) and (pointer: coarse)');
+            const interactive = 'a,button,input,select,textarea,label,video,audio,iframe,summary,[contenteditable],[data-no-tap]';
+            this.root.addEventListener('click', (e) => {
+                if (this.root.classList.contains('is-overview')) {
+                    const slide = e.target.closest('.slide');
+                    if (slide) this.toggleOverview(this.slides.indexOf(slide));
+                    return;
+                }
+                if (!coarse.matches || this.editing || e.target.closest(interactive)) return;
+                e.clientX < this.root.clientWidth / 3 ? this.prev() : this.next();
+            });
+
+            window.addEventListener('beforeunload', (e) => {
+                if (this.dirty) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+        }
+
+        onKey(e) {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's' && (this.editing || this.dirty)) {
+                e.preventDefault();
+                return this.save();
+            }
+            if (e.key === 'Escape') {
+                if (this.editing) return this.toggleEdit(false);
+                if (!this.help.hidden) return this.toggleHelp(false);
+                if (this.root.classList.contains('is-overview')) return this.toggleOverview();
+                return;
+            }
+            if (isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+            if (this.editing) return;
+            if (this.wake) this.wake();
+
+            const overview = this.root.classList.contains('is-overview');
+            const k = e.key;
+
+            if (overview) {
+                const cols = this.overviewCols || 1;
+                const moves = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols };
+                if (k in moves) {
+                    e.preventDefault();
+                    this.overviewFocus = clamp(this.overviewFocus + moves[k], 0, this.total - 1);
+                    return this.markOverviewFocus();
+                }
+                if (k === 'Enter' || k === ' ') {
+                    e.preventDefault();
+                    return this.toggleOverview(this.overviewFocus);
+                }
+                if (k === 'o' || k === 'O') return this.toggleOverview();
+                return;
+            }
+
+            if (/^\d$/.test(k)) {
+                this.typedNumber = (this.typedNumber + k).slice(-4);
+                clearTimeout(this.typedTimer);
+                this.typedTimer = setTimeout(() => (this.typedNumber = ''), 1500);
+                return;
+            }
+
+            switch (k) {
+                case 'ArrowRight':
+                case 'ArrowDown':
+                case 'PageDown':
+                case ' ':
+                case 'n':
+                case 'N':
+                    if (k === ' ' && e.shiftKey) this.prev();
+                    else this.next();
+                    break;
+                case 'ArrowLeft':
+                case 'ArrowUp':
+                case 'PageUp':
+                case 'Backspace':
+                    this.prev();
+                    break;
+                case 'Enter':
+                    if (this.typedNumber) {
+                        this.goTo(parseInt(this.typedNumber, 10) - 1, 0, 'keyboard');
+                        this.typedNumber = '';
+                    } else {
+                        this.next();
+                    }
+                    break;
+                case 'Home':
+                    this.goTo(0, 0, 'keyboard');
+                    break;
+                case 'End':
+                    this.goTo(this.total - 1, 0, 'keyboard');
+                    break;
+                case 'o':
+                case 'O':
+                    this.toggleOverview();
+                    break;
+                case 's':
+                case 'S':
+                    this.openPresenter();
+                    break;
+                case 'e':
+                case 'E':
+                    this.toggleEdit(true);
+                    break;
+                case 'f':
+                case 'F':
+                    this.toggleFullscreen();
+                    break;
+                case 'b':
+                case 'B':
+                case '.':
+                    this.root.classList.toggle('is-blackout');
+                    break;
+                case '?':
+                    this.toggleHelp();
+                    break;
+                default:
+                    return;
+            }
+            e.preventDefault();
+        }
+
+        /* ---------- overview ---------- */
+
+        toggleOverview(selectIndex) {
+            const on = !this.root.classList.contains('is-overview');
+            this.root.classList.toggle('is-overview', on);
+            if (on) {
+                this.overviewFocus = this.index;
+                this.layoutOverview();
+                this.markOverviewFocus();
+                this.slides.forEach((s) => s.removeAttribute('inert'));
+            } else {
+                this.slides.forEach((s) => {
+                    s.style.transform = '';
+                    s.classList.remove('is-focused');
+                });
+                if (typeof selectIndex === 'number') this.goTo(selectIndex, 0, 'overview');
+                else this.render(false);
+            }
+        }
+
+        layoutOverview() {
+            const W = this.width;
+            const H = this.height;
+            const n = this.total;
+            const gap = 32;
+            let best = { s: 0, cols: 1, rows: 1 };
+            for (let cols = 1; cols <= n; cols++) {
+                const rows = Math.ceil(n / cols);
+                const s = Math.min((W - gap * (cols + 1)) / (cols * W), (H - gap * (rows + 1)) / (rows * H));
+                if (s > best.s) best = { s, cols, rows };
+            }
+            const { s, cols, rows } = best;
+            const offX = (W - (cols * W * s + gap * (cols - 1))) / 2;
+            const offY = (H - (rows * H * s + gap * (rows - 1))) / 2;
+            this.overviewCols = cols;
+            this.slides.forEach((slide, i) => {
+                const x = offX + (i % cols) * (W * s + gap);
+                const y = offY + Math.floor(i / cols) * (H * s + gap);
+                slide.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
+            });
+        }
+
+        markOverviewFocus() {
+            this.slides.forEach((s, i) => s.classList.toggle('is-focused', i === this.overviewFocus));
+        }
+
+        /* ---------- editing ---------- */
+
+        toggleEdit(force) {
+            const on = typeof force === 'boolean' ? force : !this.editing;
+            if (on === !!this.editing) return;
+            this.editing = on;
+            this.root.classList.toggle('is-editing', on);
+            this.editbar.hidden = !on;
+            const nodes = this.stage.querySelectorAll(EDITABLE);
+            for (const node of nodes) {
+                if (node.closest('.notes')) continue;
+                if (on) {
+                    node.setAttribute('contenteditable', 'true');
+                    node.setAttribute('spellcheck', 'false');
+                } else {
+                    node.removeAttribute('contenteditable');
+                    node.removeAttribute('spellcheck');
+                }
+            }
+            if (on) {
+                this.onInput = () => (this.dirty = true);
+                this.stage.addEventListener('input', this.onInput);
+            } else {
+                this.stage.removeEventListener('input', this.onInput);
+                if (document.activeElement && this.stage.contains(document.activeElement)) document.activeElement.blur();
+            }
+        }
+
+        /** The document as authored: runtime state and chrome stripped. */
+        serialize() {
+            const doc = document.documentElement.cloneNode(true);
+            doc.querySelectorAll(`[${UI_ATTR}]`).forEach((n) => n.remove());
+            const root = doc.querySelector('.deck');
+            root.classList.remove('deck-ready', 'is-editing', 'is-overview', 'is-blackout', 'is-print', 'is-embedded');
+            root.removeAttribute('aria-roledescription');
+            if (this.autoLabel) root.removeAttribute('aria-label');
+            root.style.removeProperty('--deck-w');
+            root.style.removeProperty('--deck-h');
+            root.style.removeProperty('--deck-scale');
+            if (!root.getAttribute('style')) root.removeAttribute('style');
+            const stage = root.querySelector('.deck-stage');
+            stage.removeAttribute('style');
+            for (const s of stage.querySelectorAll(':scope > .slide')) {
+                s.classList.remove('active', 'is-focused');
+                ['inert', 'aria-hidden', 'role', 'aria-roledescription', 'aria-label'].forEach((a) => s.removeAttribute(a));
+                s.style.removeProperty('transform');
+                if (!s.getAttribute('style')) s.removeAttribute('style');
+            }
+            doc.querySelectorAll('[contenteditable]').forEach((n) => {
+                n.removeAttribute('contenteditable');
+                n.removeAttribute('spellcheck');
+            });
+            doc.querySelectorAll('.step-visible').forEach((n) => n.classList.remove('step-visible'));
+            doc.querySelectorAll('[class=""]').forEach((n) => n.removeAttribute('class'));
+            return '<!DOCTYPE html>\n' + doc.outerHTML + '\n';
+        }
+
+        save() {
+            const html = this.serialize();
+            const name = decodeURIComponent(location.pathname.split('/').pop() || 'deck.html') || 'deck.html';
+            const a = el('a', { href: URL.createObjectURL(new Blob([html], { type: 'text/html' })), download: name });
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+            this.dirty = false;
+            this.editbar.textContent = `Saved a copy as ${name}. Replace the original with it to keep your edits.`;
+        }
+
+        /* ---------- misc ---------- */
+
+        toggleHelp(force) {
+            this.help.hidden = typeof force === 'boolean' ? !force : !this.help.hidden;
+        }
+
+        toggleFullscreen() {
+            if (document.fullscreenElement) document.exitFullscreen?.();
+            else document.documentElement.requestFullscreen?.().catch(() => {});
+        }
+
+        /** Lay every slide out for print/PDF capture with all builds shown. */
+        setPrintMode(on) {
+            this.root.classList.toggle('is-print', on);
+            if (on) {
+                this.slides.forEach((s) => {
+                    s.classList.add('active');
+                    s.removeAttribute('inert');
+                    s.setAttribute('aria-hidden', 'false');
+                });
+                this.steps.flat(2).forEach((n) => n.classList.add('step-visible'));
+            } else {
+                this.steps.flat(2).forEach((n) => n.classList.remove('step-visible'));
+                this.render(true);
+                this.fit();
+            }
+        }
+
+        emit(type, detail) {
+            this.root.dispatchEvent(new CustomEvent(type, { detail, bubbles: true }));
+            (this.listeners[type] || []).forEach((fn) => fn(detail));
+        }
+
+        /* ---------- presenter sync ---------- */
+
+        openPresenter() {
+            const win = window.open(urlFor('presenter', this.index, this.step), 'deck-presenter', 'width=1280,height=800');
+            if (win) this.peers.add(win);
+        }
+
+        bindSync() {
+            window.addEventListener('message', (e) => {
+                const d = e.data;
+                if (!d || d.source !== MSG || d.type !== 'sync') return;
+                if (e.source && e.source !== window) this.peers.add(e.source);
+                if (d.index !== this.index || d.step !== this.step) this.goTo(d.index, d.step, 'sync');
+            });
+        }
+
+        broadcast() {
+            const msg = { source: MSG, type: 'sync', index: this.index, step: this.step };
+            for (const peer of this.peers) {
+                try {
+                    if (peer.closed) this.peers.delete(peer);
+                    else peer.postMessage(msg, '*');
+                } catch (_) {
+                    this.peers.delete(peer);
+                }
+            }
+        }
+
+        initPresenter() {
+            document.body.classList.add('deck-presenter');
+            document.title = 'Presenter: ' + document.title;
+            const view = el('div', { class: 'deck-presenter-view', [UI_ATTR]: '' },
+                '<header><span class="pv-count"></span><span class="pv-timer">00:00</span>' +
+                '<span class="pv-clock"></span><button type="button" class="pv-reset">reset timer</button></header>' +
+                '<div class="pv-frame pv-current"><iframe title="Current slide"></iframe></div>' +
+                '<div class="pv-frame pv-next"><span class="pv-label">Next</span><iframe title="Next slide"></iframe></div>' +
+                '<div class="pv-notes" aria-live="polite"></div>');
+            document.body.appendChild(view);
+            const [cur, nxt] = view.querySelectorAll('iframe');
+            cur.src = urlFor('embed', 0, 0);
+            nxt.src = urlFor('embed', 0, 0);
+            if (window.opener) this.peers.add(window.opener);
+            this.frames = { cur, nxt, ready: 0 };
+            const onLoad = () => {
+                this.frames.ready++;
+                this.presenterRender();
+            };
+            cur.addEventListener('load', onLoad);
+            nxt.addEventListener('load', onLoad);
+
+            let start = Date.now();
+            const pad = (n) => String(n).padStart(2, '0');
+            const tick = () => {
+                const t = Math.floor((Date.now() - start) / 1000);
+                view.querySelector('.pv-timer').textContent = `${pad(Math.floor(t / 60))}:${pad(t % 60)}`;
+                view.querySelector('.pv-clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            };
+            setInterval(tick, 1000);
+            tick();
+            view.querySelector('.pv-reset').addEventListener('click', () => {
+                start = Date.now();
+                tick();
+            });
+
+            this.pv = view;
+            this.render = () => this.presenterRender();
+            this.fit = () => {};
+            this.help = { hidden: true };
+            document.addEventListener('keydown', (e) => {
+                if (isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+                const fwd = ['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'n', 'Enter'];
+                const back = ['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'];
+                if (fwd.includes(e.key) && !(e.key === ' ' && e.shiftKey)) this.next();
+                else if (back.includes(e.key) || (e.key === ' ' && e.shiftKey)) this.prev();
+                else if (e.key === 'Home') this.goTo(0, 0, 'keyboard');
+                else if (e.key === 'End') this.goTo(this.total - 1, 0, 'keyboard');
+                else return;
+                e.preventDefault();
+            });
+            this.bindSync();
+            const h = parseHash();
+            this.goTo(h ? h.index : 0, h ? h.step : 0, 'init');
+            this.emit('deck:ready', { total: this.slides.length, presenter: true });
+        }
+
+        presenterRender() {
+            const { cur, nxt } = this.frames;
+            const post = (frame, index, step) => {
+                try { frame.contentWindow.postMessage({ source: MSG, type: 'sync', index, step }, '*'); } catch (_) { /* not loaded */ }
+            };
+            post(cur, this.index, this.step);
+            // "Next" shows the next build step if there is one, otherwise the next slide.
+            const more = this.step < this.steps[this.index].length;
+            const last = this.index >= this.total - 1 && !more;
+            nxt.style.visibility = last ? 'hidden' : 'visible';
+            post(nxt, more ? this.index : this.index + 1, more ? this.step + 1 : 0);
+            this.pv.querySelector('.pv-count').textContent =
+                `${this.index + 1} / ${this.total}` + (this.steps[this.index].length ? `  step ${this.step}/${this.steps[this.index].length}` : '');
+            const notes = this.slides[this.index].querySelector('.notes');
+            const box = this.pv.querySelector('.pv-notes');
+            box.replaceChildren(...(notes ? Array.from(notes.cloneNode(true).childNodes) : []));
+            try { history.replaceState(null, '', urlFor('presenter', this.index, this.step)); } catch (_) { /* ignore */ }
+        }
+    }
+
+    function boot() {
+        const root = document.querySelector('.deck');
+        if (!root) {
+            console.warn('[deck] No .deck element found.');
+            return;
+        }
+        if (root.__deck) return;
+        const deck = new Deck(root);
+        root.__deck = deck;
+        window.deck = {
+            version: VERSION,
+            mode: MODE,
+            get index() { return deck.index; },
+            get step() { return deck.step; },
+            get total() { return deck.total; },
+            get slides() { return deck.slides.slice(); },
+            stepsOf: (i) => deck.steps[i].length,
+            next: () => deck.next(),
+            prev: () => deck.prev(),
+            goTo: (i, step) => deck.goTo(i, step, 'api'),
+            toggleOverview: () => deck.toggleOverview(),
+            toggleEdit: (on) => deck.toggleEdit(on),
+            openPresenter: () => deck.openPresenter(),
+            setPrintMode: (on) => deck.setPrintMode(on),
+            serialize: () => deck.serialize(),
+            fit: () => deck.fit(),
+            on(type, fn) {
+                (deck.listeners[type] ||= []).push(fn);
+                return () => (deck.listeners[type] = deck.listeners[type].filter((f) => f !== fn));
+            },
+        };
+        deck.init();
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
+})();
+</script>
+</body>
+</html>

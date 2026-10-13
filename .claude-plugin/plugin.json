@@ -1,0 +1,13 @@
+{
+  "name": "frontend-slides",
+  "version": "3.0.0-alpha.1",
+  "description": "Zero-dependency HTML slide decks with a shared tested runtime, a layout checker, and design guidance that avoids the generic AI look.",
+  "author": {
+    "name": "iakacer",
+    "url": "https://github.com/iakacer"
+  },
+  "homepage": "https://github.com/iakacer/better-frontend-slides",
+  "repository": "https://github.com/iakacer/better-frontend-slides",
+  "license": "MIT",
+  "keywords": ["presentations", "slides", "html", "design", "powerpoint", "templates"]
+}

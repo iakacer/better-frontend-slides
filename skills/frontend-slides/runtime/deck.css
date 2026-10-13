@@ -1,0 +1,458 @@
+/* ============================================================
+   frontend-slides runtime: deck.css
+   Fixed 16:9 stage, slide visibility, build steps, motion
+   primitives, deck chrome, overview, presenter view and print.
+
+   Theme CSS goes AFTER this file. Themes style the slides; they
+   should not need to touch anything in here.
+
+   Markup contract (see reference/runtime.md):
+     <main class="deck">
+       <div class="deck-stage">
+         <section class="slide" data-label="Title"> … </section>
+       </div>
+     </main>
+   ============================================================ */
+
+/* ---------- 1. Design tokens the runtime reads ---------- */
+:root {
+    --deck-w: 1920px;              /* design width of every slide */
+    --deck-h: 1080px;              /* design height of every slide */
+    --deck-backdrop: #0d0d0d;      /* letterbox colour around the stage */
+    --slide-bg: #ffffff;           /* default slide background */
+    --deck-transition: 220ms;      /* slide cross-fade; 0ms for hard cuts */
+    --deck-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+    --deck-ui-fg: rgba(255, 255, 255, 0.86);
+    --deck-ui-bg: rgba(0, 0, 0, 0.72);
+    --deck-ui-accent: #ffffff;
+    --deck-ui-font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* ---------- 2. Viewport and stage ---------- */
+html,
+body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--deck-backdrop);
+}
+
+.deck {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--deck-backdrop);
+}
+
+/* The stage is always authored at the design size. deck.js scales
+   it with a single transform; slide content never reflows. */
+.deck-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--deck-w);
+    height: var(--deck-h);
+    overflow: hidden;
+    transform-origin: 0 0;
+}
+
+/* ---------- 3. Slides ---------- */
+.slide {
+    position: absolute;
+    inset: 0;
+    width: var(--deck-w);
+    height: var(--deck-h);
+    box-sizing: border-box;
+    overflow: hidden;
+    background: var(--slide-bg);
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+        opacity var(--deck-transition) var(--deck-ease),
+        visibility 0s linear var(--deck-transition);
+}
+
+.slide.active,
+.deck:not(.deck-ready) .slide:first-child {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+    transition:
+        opacity var(--deck-transition) var(--deck-ease),
+        visibility 0s;
+}
+
+/* Speaker notes live inside their slide but are never shown on it. */
+.slide .notes {
+    display: none !important;
+}
+
+/* Media never escapes its box by accident. */
+.slide img,
+.slide video,
+.slide canvas,
+.slide svg {
+    max-width: 100%;
+}
+
+/* ---------- 4. Build steps ----------
+   <li class="step">…</li> reveals one press at a time.
+   data-step="2" groups elements that should appear together. */
+.slide .step {
+    transition: opacity 260ms var(--deck-ease), transform 260ms var(--deck-ease);
+}
+
+.deck-ready .slide .step:not(.step-visible) {
+    visibility: hidden;
+    opacity: 0;
+}
+
+/* ---------- 5. Motion primitives ----------
+   data-animate="fade | rise | wipe | scale" plays when the slide
+   becomes active. Stagger with style="--delay: 120ms".
+   Use one or two of these per deck, not all of them. */
+@keyframes deck-fade  { from { opacity: 0; } }
+@keyframes deck-rise  { from { opacity: 0; transform: translateY(24px); } }
+@keyframes deck-scale { from { opacity: 0; transform: scale(0.97); } }
+@keyframes deck-wipe  { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+
+.deck-ready .slide [data-animate] {
+    animation-duration: var(--duration, 640ms);
+    animation-timing-function: var(--deck-ease);
+    animation-delay: var(--delay, 0ms);
+    animation-fill-mode: both;
+    animation-play-state: paused;
+}
+
+.deck-ready .slide [data-animate="fade"]  { animation-name: deck-fade; }
+.deck-ready .slide [data-animate="rise"]  { animation-name: deck-rise; }
+.deck-ready .slide [data-animate="scale"] { animation-name: deck-scale; }
+.deck-ready .slide [data-animate="wipe"]  { animation-name: deck-wipe; }
+
+.deck-ready .slide.active [data-animate] {
+    animation-play-state: running;
+}
+
+/* ---------- 6. Deck chrome (outside the slide design) ---------- */
+.deck-ui {
+    position: fixed;
+    right: 16px;
+    bottom: 14px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 9px;
+    font: 500 12px/1 var(--deck-ui-font);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    color: var(--deck-ui-fg);
+    background: var(--deck-ui-bg);
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity 240ms ease;
+    user-select: none;
+}
+
+.deck-ui.is-visible,
+.deck-ui:hover,
+.deck-ui:focus-within {
+    opacity: 1;
+}
+
+.deck-ui button {
+    all: unset;
+    cursor: pointer;
+    padding: 2px 4px;
+    color: inherit;
+}
+
+.deck-ui button:focus-visible {
+    outline: 1px solid var(--deck-ui-accent);
+}
+
+.deck-progress {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    z-index: 20;
+    height: 3px;
+    width: 100%;
+    pointer-events: none;
+}
+
+.deck-progress > span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    background: var(--deck-ui-accent);
+    opacity: 0.55;
+    transform-origin: 0 0;
+    transform: scaleX(0);
+    transition: transform 240ms var(--deck-ease);
+}
+
+.deck-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+/* Blackout (B or .) hides the stage, like a projector mute. */
+.deck.is-blackout .deck-stage {
+    visibility: hidden;
+}
+
+/* ---------- 7. Help and edit overlays ---------- */
+.deck-panel {
+    position: fixed;
+    z-index: 30;
+    font: 13px/1.5 var(--deck-ui-font);
+    color: var(--deck-ui-fg);
+    background: var(--deck-ui-bg);
+    border-radius: 3px;
+}
+
+.deck-help {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px 26px;
+    min-width: 320px;
+}
+
+.deck-help[hidden],
+.deck-editbar[hidden] {
+    display: none;
+}
+
+.deck-help h2 {
+    margin: 0 0 10px;
+    font: inherit;
+    font-weight: 600;
+}
+
+.deck-help dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 18px;
+    margin: 0;
+}
+
+.deck-help dt { color: var(--deck-ui-accent); }
+.deck-help dd { margin: 0; }
+
+.deck-editbar {
+    left: 16px;
+    top: 14px;
+    padding: 7px 11px;
+}
+
+.deck.is-editing [contenteditable="true"] {
+    outline: 1px dashed rgba(127, 127, 127, 0.55);
+    outline-offset: 4px;
+    cursor: text;
+}
+
+.deck.is-editing [contenteditable="true"]:focus {
+    outline: 2px solid rgba(127, 127, 127, 0.9);
+}
+
+/* ---------- 8. Overview grid (O) ---------- */
+.deck.is-overview .slide {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    cursor: pointer;
+    transform-origin: 0 0;
+    transition: none;
+    outline: 0 solid transparent;
+}
+
+.deck.is-overview .slide * {
+    pointer-events: none;
+}
+
+.deck.is-overview .slide .step {
+    visibility: visible;
+    opacity: 1;
+}
+
+.deck.is-overview .slide.is-focused {
+    outline: 12px solid var(--deck-ui-accent);
+}
+
+/* ---------- 9. Presenter view (S opens it in a new window) ---------- */
+body.deck-presenter {
+    overflow: hidden;
+    color: #e8e8e8;
+    background: #141414;
+    font: 15px/1.5 system-ui, sans-serif;
+}
+
+body.deck-presenter > .deck {
+    display: none;
+}
+
+.deck-presenter-view {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    grid-template-columns: 62fr 38fr;
+    grid-template-rows: auto 1fr 1fr;
+    gap: 14px;
+    padding: 14px;
+    box-sizing: border-box;
+}
+
+.deck-presenter-view header {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 28px;
+    align-items: baseline;
+    font: 500 20px/1 var(--deck-ui-font);
+    font-variant-numeric: tabular-nums;
+}
+
+.deck-presenter-view header button {
+    all: unset;
+    cursor: pointer;
+    font-size: 13px;
+    color: #9a9a9a;
+}
+
+.deck-presenter-view .pv-frame {
+    position: relative;
+    min-height: 0;
+    background: #000;
+}
+
+.deck-presenter-view .pv-frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.deck-presenter-view .pv-current { grid-row: 2 / 4; }
+.deck-presenter-view .pv-next { opacity: 0.85; }
+
+.deck-presenter-view .pv-label {
+    position: absolute;
+    left: 8px;
+    top: -2px;
+    transform: translateY(-100%);
+    font-size: 12px;
+    color: #8a8a8a;
+}
+
+.deck-presenter-view .pv-notes {
+    overflow: auto;
+    padding: 4px 6px;
+    font-size: 22px;
+    line-height: 1.45;
+}
+
+.deck-presenter-view .pv-notes:empty::before {
+    content: "No notes for this slide.";
+    color: #777;
+}
+
+/* ---------- 10. Embedded view (used inside presenter frames) ---------- */
+.deck.is-embedded ~ .deck-ui,
+.deck.is-embedded ~ .deck-progress {
+    display: none;
+}
+
+/* ---------- 11. Print and PDF: one slide per page ---------- */
+@page {
+    size: 1920px 1080px;
+    margin: 0;
+}
+
+@media print {
+    html,
+    body {
+        width: auto;
+        height: auto;
+        overflow: visible;
+        background: none;
+    }
+
+    .deck {
+        position: static;
+        overflow: visible;
+        background: none;
+    }
+
+    .deck-stage {
+        position: static;
+        transform: none !important;
+        width: auto;
+        height: auto;
+        overflow: visible;
+    }
+
+    .slide {
+        position: relative;
+        visibility: visible !important;
+        opacity: 1 !important;
+        transition: none !important;
+        break-after: page;
+        break-inside: avoid;
+    }
+
+    .slide:last-child {
+        break-after: auto;
+    }
+
+    .slide .step {
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    /* Finish every animation instantly so nothing prints mid-entrance. */
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0s !important;
+        animation-delay: 0s !important;
+        animation-iteration-count: 1 !important;
+        animation-play-state: running !important;
+        transition: none !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    .deck-ui,
+    .deck-progress,
+    .deck-panel,
+    .deck-sr {
+        display: none !important;
+    }
+}
+
+/* ---------- 12. Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --deck-transition: 0ms;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-delay: 0s !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0s !important;
+        scroll-behavior: auto !important;
+    }
+}
