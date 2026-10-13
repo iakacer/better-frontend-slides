@@ -2,7 +2,7 @@
 
 Skip this file when the deck has no images.
 
-If user chose "No images" in Phase 1, skip this entirely. If images were provided, process them before generating HTML.
+If the user has no images, skip this. If they provided images, process them before generating HTML.
 
 **Dependency:** `pip install Pillow`
 

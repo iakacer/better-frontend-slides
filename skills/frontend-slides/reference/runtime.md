@@ -1,6 +1,6 @@
 # Deck runtime
 
-Every deck uses the shared runtime in `runtime/deck.css` and `runtime/deck.js`. You never write a slide controller, stage scaler, or editing code. `scripts/new-deck.mjs` inlines the runtime into the deck file, so the output is still one self-contained HTML file with no dependencies.
+Every deck uses the shared runtime in `runtime/deck.css` and `runtime/deck.js`, plus the layout library in `runtime/layouts.css` ([layouts.md](layouts.md)). You never write a slide controller, stage scaler, or editing code. `scripts/new-deck.mjs` inlines the runtime into the deck file, so the output is still one self-contained HTML file with no dependencies.
 
 ## Workflow
 
@@ -8,15 +8,17 @@ Every deck uses the shared runtime in `runtime/deck.css` and `runtime/deck.js`. 
 # 1. Scaffold (from the skill directory, or give the full path to the script)
 node scripts/new-deck.mjs talk.html --title "Field notes from the pilot" --slides 12
 
-# 2. Write the theme inside <style data-deck-theme> and the slide markup.
+# 2. Write the visual brief and theme inside <style data-deck-theme>,
+#    then the slides, each with a layout class (l-split, l-figure, …).
 
-# 3. Check: overflow, overlap, clipping, contrast, phone scaling, screenshots
+# 3. Check: overflow, overlap, clipping, contrast, fonts, design lint, screenshots
 node scripts/check-deck.mjs talk.html
 
-# 4. Look at .deck-check/talk/overview.png and any slide with issues. Fix. Repeat 3–4.
+# 4. Look at .deck-check/talk/overview.png and any slide with issues, run the
+#    critique in design-principles.md. Fix. Repeat 3–4.
 ```
 
-Never edit the `<style data-deck-runtime>` or `<script data-deck-runtime>` blocks. To move a deck to a newer runtime: `node scripts/new-deck.mjs --upgrade talk.html`.
+Never edit the `<style data-deck-runtime>`, `<style data-deck-layouts>` or `<script data-deck-runtime>` blocks. To move a deck to a newer runtime and layout library: `node scripts/new-deck.mjs --upgrade talk.html`. `--no-layouts` scaffolds without the layout library, for a deck whose design has nothing in common with a column grid.
 
 ## Markup contract
 
@@ -46,7 +48,7 @@ Never edit the `<style data-deck-runtime>` or `<script data-deck-runtime>` block
 | `.notes` | Speaker notes. Never shown on the slide; shown in the presenter view. Any HTML. |
 | `.step` | Appears one press at a time, in DOM order. `data-step="3"` puts an element on press 3; equal numbers appear together. |
 | `data-animate` | `fade`, `rise`, `scale` or `wipe`. Plays each time the slide opens. Stagger with `style="--delay: 120ms"`, change length with `--duration`. |
-| `data-check` | `off`, `overlap-ok` or `clip-ok` silences check-deck for a deliberate exception. Use sparingly. |
+| `data-check` | `off`, `overlap-ok` or `clip-ok` silences check-deck for a deliberate exception; `design-ok` silences the design lint for an element or slide. Use sparingly. |
 
 Hidden slides are `inert` and `aria-hidden`, so links and buttons on them cannot be tabbed into.
 
@@ -121,4 +123,27 @@ Also available: `deck.toggleOverview()`, `deck.toggleEdit(on)`, `deck.openPresen
 | `font-failed` | warning | A web font did not load, so a fallback is showing |
 | `no-runtime` | warning | The deck does not use the shared runtime |
 
-`--json` gives the same report for scripts. Exit code is 1 when there are errors. Every slide is checked with all steps revealed. Screenshots go to `.deck-check/<deck>/` next to the deck: `overview.png` shows every slide at once; `slide-NN.png` shows each one at full size. Delete that folder before delivering if the user does not want it.
+### Design lint
+
+After the per-slide checks, `check-deck` looks at the whole deck for habits that make slides look generated. Each finding names the slides and a fix; [anti-ai-tells.md](anti-ai-tells.md) explains them.
+
+| Type | Flags |
+| --- | --- |
+| `overused-font` | Inter, Roboto, Poppins, Montserrat, Space Grotesk, Syne, Satoshi and the other default faces |
+| `system-font` | Most text falling back to Arial, Helvetica, Georgia or another system face |
+| `gradient-text` | Gradient-filled text |
+| `ai-palette` | Indigo/violet gradients or accents |
+| `glassmorphism`, `glow` | Frosted panels, coloured glow shadows |
+| `emoji` | Emoji used as icons |
+| `pill-eyebrow` | Rounded pill badges above headings |
+| `soft-cards` | Rounded cards with soft shadows on many slides |
+| `icon-card-grid` | Rows of equal cards with an icon, heading and a line |
+| `centered-layouts` | Most slides centred |
+| `repetitive-layout` | Four or more slides in a row with the same layout |
+| `motion-everywhere` | Entrance animation on most slides |
+| `ai-copy` | Stock phrases: unlock, seamless, elevate, delve… |
+| `em-dashes` | Three or more em dashes in slide text |
+
+Design findings are warnings. `--strict` makes them errors (for CI on example decks); `--no-design` skips the lint. Mark a deliberate exception with `data-check="design-ok"`.
+
+`--json` gives the same report for scripts, with design findings under `design`. Exit code is 1 when there are errors. Every slide is checked with all steps revealed. Screenshots go to `.deck-check/<deck>/` next to the deck: `overview.png` shows every slide at once; `slide-NN.png` shows each one at full size. Delete that folder before delivering if the user does not want it.

@@ -263,6 +263,24 @@ describe('new-deck', () => {
         assert.equal(after, before);
     });
 
+    test('inlines the layout library unless --no-layouts, and --upgrade refreshes it', async () => {
+        const { writeFileSync, mkdtempSync } = await import('node:fs');
+        const { join } = await import('node:path');
+        const { tmpdir } = await import('node:os');
+        const dir = mkdtempSync(join(tmpdir(), 'fs-test-'));
+        const withLayouts = join(dir, 'a.html');
+        const without = join(dir, 'b.html');
+        assert.equal(runNode('new-deck.mjs', [withLayouts]).code, 0);
+        assert.equal(runNode('new-deck.mjs', [without, '--no-layouts']).code, 0);
+        const html = readFileSync(withLayouts, 'utf8');
+        assert.match(html, /<style data-deck-layouts>[\s\S]*\.l-split/);
+        assert.match(html, /class="slide l-title"/);
+        assert.doesNotMatch(readFileSync(without, 'utf8'), /data-deck-layouts/);
+        writeFileSync(withLayouts, html.replace(/(<style data-deck-layouts>)[\s\S]*?(<\/style>)/, '$1/* old */$2'));
+        assert.equal(runNode('new-deck.mjs', ['--upgrade', withLayouts]).code, 0);
+        assert.equal(readFileSync(withLayouts, 'utf8'), html);
+    });
+
     test('refuses to overwrite without --force', () => {
         const file = makeDeck('<section class="slide"><h1>x</h1></section>');
         const r = runNode('new-deck.mjs', [file]);

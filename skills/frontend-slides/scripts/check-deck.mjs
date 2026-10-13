@@ -5,11 +5,16 @@
 //   node scripts/check-deck.mjs talk.html --json     machine-readable report
 //   node scripts/check-deck.mjs talk.html --out dir  screenshots go to dir
 //   node scripts/check-deck.mjs talk.html --no-screenshots
+//   node scripts/check-deck.mjs talk.html --strict   design warnings fail too
 //
 // Each slide is rendered at 1920×1080 with every build step revealed and
 // animations finished. Checks: text outside the slide, text escaping its
 // panel, clipped content, overlapping text, tiny text, low contrast,
 // broken images, empty slides, console errors, phone-size scaling.
+// A design lint (lib/design-lint.mjs) then flags habits that make a deck
+// look machine-made: overused fonts, violet gradients, glass, glow, emoji
+// icons, pill eyebrows, icon-card grids, centred everything, repeated
+// layouts, motion everywhere, and stock AI phrasing.
 // Screenshots (slide-NN.png + overview.png) are written so the agent can
 // look at the result before showing it to anyone.
 //
@@ -20,13 +25,14 @@
 import { mkdirSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { loadPlaywright, launchChromium, openDeck, serveDeck } from './lib/browser.mjs';
+import { lintDeck } from './lib/design-lint.mjs';
 
 const args = process.argv.slice(2);
 const flags = new Set(args.filter((a) => a.startsWith('--')));
 const outIdx = args.indexOf('--out');
 const file = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--out');
 if (!file) {
-    console.error('Usage: node check-deck.mjs <deck.html> [--json] [--out dir] [--no-screenshots]');
+    console.error('Usage: node check-deck.mjs <deck.html> [--json] [--out dir] [--no-screenshots] [--strict] [--no-design]');
     process.exit(2);
 }
 const outDir = resolve(outIdx >= 0 ? args[outIdx + 1] : join(dirname(resolve(file)), '.deck-check', basename(file, '.html')));
@@ -62,20 +68,28 @@ function checkSlide(index) {
         }
         return true;
     };
-    const ownTextRect = (node) => {
-        let box = null;
+    // Line boxes of a node's own text (not its children's), plus their union.
+    // Line boxes rather than one union box, so text flowing through CSS
+    // columns or around a float is not mistaken for overlap.
+    const ownText = (node) => {
+        const lines = [];
         for (const child of node.childNodes) {
             if (child.nodeType !== 3 || !child.textContent.trim()) continue;
             const r = document.createRange();
             r.selectNodeContents(child);
             for (const rect of r.getClientRects()) {
                 if (rect.width < 1 || rect.height < 1) continue;
-                box = box
-                    ? { left: Math.min(box.left, rect.left), top: Math.min(box.top, rect.top), right: Math.max(box.right, rect.right), bottom: Math.max(box.bottom, rect.bottom) }
-                    : { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+                // A line box spans the font's full ascent and descent; trim it
+                // towards the ink so tight display leading isn't read as overlap.
+                const trim = rect.height * 0.14;
+                lines.push({ left: rect.left, top: rect.top + trim, right: rect.right, bottom: rect.bottom - trim });
             }
         }
-        return box;
+        if (!lines.length) return null;
+        const rect = lines.reduce((b, r) => ({
+            left: Math.min(b.left, r.left), top: Math.min(b.top, r.top), right: Math.max(b.right, r.right), bottom: Math.max(b.bottom, r.bottom),
+        }));
+        return { rect, lines };
     };
     const drawsBox = (cs) =>
         (parseColor(cs.backgroundColor)[3] > 0.05) || cs.backgroundImage !== 'none' ||
@@ -96,16 +110,26 @@ function checkSlide(index) {
         const a = top[3];
         return [top[0] * a + bottom[0] * (1 - a), top[1] * a + bottom[1] * (1 - a), top[2] * a + bottom[2] * (1 - a), 1];
     };
-    // Effective background behind a node, or null when an image/gradient makes it unknowable.
-    const backgroundOf = (node) => {
+    // Effective background behind a point of text, or null when an image,
+    // gradient, video or drawing underneath makes it unknowable. Walks what
+    // is actually painted under the text, so absolutely positioned media
+    // behind an overlay counts, not just the text's ancestors.
+    const MEDIA = /^(IMG|VIDEO|CANVAS|IFRAME|PICTURE)$/;
+    const backgroundOf = (node, rect) => {
+        const x = Math.min(Math.max((rect.left + rect.right) / 2, sr.left + 1), sr.right - 1);
+        const y = Math.min(Math.max((rect.top + rect.bottom) / 2, sr.top + 1), sr.bottom - 1);
+        const stack = document.elementsFromPoint(x, y);
+        const start = stack.indexOf(node);
+        const below = start >= 0 ? stack.slice(start) : [node, ...stack];
         const layers = [];
-        for (let n = node; n; n = n.parentElement) {
+        for (const n of below) {
+            if (n !== node && node.contains(n)) continue;
+            if (MEDIA.test(n.tagName) || (n instanceof SVGElement && n !== node && !node.contains(n))) return null;
             const cs = getComputedStyle(n);
             if (cs.backgroundImage !== 'none') return null;
             const c = parseColor(cs.backgroundColor);
             if (c[3] > 0) layers.push(c);
-            if (c[3] >= 0.99) break;
-            if (n === slide) break;
+            if (c[3] >= 0.99 || n === slide) break;
         }
         let out = [255, 255, 255, 1];
         for (let i = layers.length - 1; i >= 0; i--) out = blend(layers[i], out);
@@ -116,8 +140,8 @@ function checkSlide(index) {
     const texts = [];
     for (const node of all) {
         if (off(node, 'off') || !shown(node)) continue;
-        const rect = ownTextRect(node);
-        if (rect) texts.push({ node, rect });
+        const t = ownText(node);
+        if (t) texts.push({ node, ...t });
     }
 
     // 1. Text outside the slide.
@@ -163,9 +187,10 @@ function checkSlide(index) {
             const b = texts[j];
             if (a.node.contains(b.node) || b.node.contains(a.node)) continue;
             if (off(a.node, 'overlap-ok') || off(b.node, 'overlap-ok')) continue;
-            const w = Math.min(a.rect.right, b.rect.right) - Math.max(a.rect.left, b.rect.left);
-            const h = Math.min(a.rect.bottom, b.rect.bottom) - Math.max(a.rect.top, b.rect.top);
-            if (w > 3 && h > 3) {
+            const hit = (r, q) =>
+                Math.min(r.right, q.right) - Math.max(r.left, q.left) > 3 &&
+                Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top) > 3;
+            if (hit(a.rect, b.rect) && a.lines.some((r) => b.lines.some((q) => hit(r, q)))) {
                 issues.push({ type: 'text-overlap', severity: 'error', element: describe(a.node), other: describe(b.node),
                     text: snippet(a.node) + ' / ' + snippet(b.node), message: 'Two pieces of text overlap.' });
             }
@@ -173,14 +198,14 @@ function checkSlide(index) {
     }
 
     // 5. Tiny text and 6. contrast.
-    for (const { node } of texts) {
+    for (const { node, rect } of texts) {
         const cs = getComputedStyle(node);
         const size = parseFloat(cs.fontSize);
         if (size < 18) {
             issues.push({ type: 'small-text', severity: 'warning', element: describe(node), text: snippet(node),
                 message: `${size}px text is hard to read from a distance (aim for 18px or more at 1920×1080).` });
         }
-        const bg = backgroundOf(node);
+        const bg = backgroundOf(node, rect);
         if (!bg) continue;
         const fg = blend(parseColor(cs.color), bg);
         const l1 = lum(fg);
@@ -216,7 +241,7 @@ function checkSlide(index) {
 const pw = await loadPlaywright();
 const browser = await launchChromium(pw);
 const server = await serveDeck(file);
-const report = { file: resolve(file), runtime: null, slides: [], global: [], screenshots: shots ? outDir : null };
+const report = { file: resolve(file), runtime: null, slides: [], global: [], design: [], screenshots: shots ? outDir : null };
 
 try {
     const { page, consoleErrors } = await openDeck(browser, server.url);
@@ -259,6 +284,12 @@ try {
         await page.evaluate(() => window.deck.toggleOverview());
     }
 
+    if (!flags.has('--no-design')) {
+        await page.evaluate(() => window.deck && window.deck.goTo(0));
+        report.design = await page.evaluate(lintDeck);
+        if (flags.has('--strict')) report.design.forEach((d) => (d.severity = 'error'));
+    }
+
     for (const msg of consoleErrors) {
         report.global.push({ type: 'console-error', severity: 'error', message: msg.slice(0, 300) });
     }
@@ -281,7 +312,7 @@ try {
     await browser.close();
 }
 
-const allIssues = [...report.global, ...report.slides.flatMap((s) => s.issues)];
+const allIssues = [...report.global, ...report.slides.flatMap((s) => s.issues), ...report.design];
 report.summary = {
     slides: report.slides.length,
     errors: allIssues.filter((i) => i.severity === 'error').length,
@@ -298,6 +329,12 @@ if (flags.has('--json')) {
         if (!s.issues.length) continue;
         console.log(`\nSlide ${s.index + 1} (${s.label})`);
         s.issues.forEach((i) => console.log(line(i)));
+    }
+    if (report.design.length) {
+        console.log('\nDesign (see reference/anti-ai-tells.md)');
+        for (const d of report.design) {
+            console.log(`  ${d.severity === 'error' ? '✗' : '!'} ${d.type}: ${d.message} [slides ${d.slides.join(', ')}]\n      fix: ${d.fix}`);
+        }
     }
     console.log(`\n${report.summary.errors} error(s), ${report.summary.warnings} warning(s).`);
     if (shots) console.log(`Screenshots: ${outDir} (look at overview.png, then any slide with issues)`);

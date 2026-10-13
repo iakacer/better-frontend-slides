@@ -14,7 +14,7 @@ function walk(dir, out = []) {
 }
 
 const docs = ['README.md', ...walk('skills/frontend-slides')];
-const REMOVED = /viewport-base\.css|html-template\.md|SlidePresentation/;
+const REMOVED = /viewport-base\.css|html-template\.md|SlidePresentation|animation-patterns\.md/;
 
 for (const file of docs) {
     test(`links in ${file} resolve`, () => {

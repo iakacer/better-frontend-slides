@@ -27,10 +27,11 @@ https://github.com/user-attachments/assets/ef57333e-f879-432a-afb9-180388982478
 - **Zero Dependencies** — Single HTML files with inline CSS/JS. No npm, no build tools, no frameworks.
 - **Visual Style Discovery** — Can't articulate design preferences? No problem. Pick from generated visual previews.
 - **PPT Conversion** — Convert existing PowerPoint files to web, preserving all images and content.
-- **Anti-AI-Slop** — Curated distinctive styles that avoid generic AI aesthetics (bye-bye, purple gradients on white).
+- **Designed, Not Generated** — Every deck starts from a visual brief rooted in a real design tradition (Swiss, broadsheet, annual report, riso…), with curated type pairings and palettes and a written guide to the habits that make slides look AI-made.
+- **Layout Library** — 18 slide layouts on a 12-column grid (statement, split, figure, big number, comparison, timeline, table, agenda and more), all driven by theme tokens. See [`examples/layout-gallery.html`](examples/layout-gallery.html).
 - **Bold Template Pack** — Optional design-forward templates from `beautiful-html-templates`, loaded progressively so safe presets still work as the default fallback.
 - **Shared Runtime** — Presenter view with notes and timer, overview grid, deep links, build steps, inline editing and one-page-per-slide PDF, tested and inlined into every deck.
-- **Checked Before You See It** — `check-deck` renders every slide, flags overflow, overlap, clipping and low contrast, and writes screenshots the agent reviews.
+- **Checked Before You See It** — `check-deck` renders every slide, flags overflow, overlap, clipping, low contrast and missing fonts, lints for AI design tells (overused fonts, violet gradients, centred everything, icon-card grids, emoji, stock phrases), and writes screenshots the agent critiques.
 - **Production Quality** — Accessible, fixed 16:9, well-commented code you can customize.
 
 ## Installation
@@ -94,11 +95,12 @@ In non-Claude agents, ask the agent to use the Frontend Slides skill and point i
 
 The skill will:
 
-1. Ask about your content (slides, messages, images)
-2. Generate 3 visual style previews for you to compare, inferring the vibe from your brief unless you already named one
+1. Ask about the occasion, audience, content and density
+2. Write three visual briefs from different design traditions and build a two-slide preview of each
 3. Let you pick the visual direction
-4. Create the full presentation in your chosen style
-5. Open it in your browser
+4. Build the deck from the layout library in your chosen design system
+5. Check it, look at the screenshots, critique and fix it
+6. Open it in your browser
 
 ### Convert a PowerPoint
 
@@ -144,17 +146,10 @@ The skill also includes 34 optional bold design systems from
 `beautiful-html-templates`, such as **Neo-Grid Bold**, **Editorial Tri-Tone**,
 **Creative Mode**, **Broadside**, **Signal**, and **Vellum**.
 
-During style discovery, the preview set is:
-
-- 1 safe preset from `STYLE_PRESETS.md`
-- at least 1 bold template option from `bold-template-pack/selection-index.json`
-- 1 wildcard option, either another bold template or a self-generated custom design
-
-The agent reads the compact bold template index first, then loads only the
-shortlisted candidates' small `preview.md` cards for title-slide previews. It
-loads the full `design.md` for exactly one bold template only after the user
-picks that template for the final deck. If the user picks a custom wildcard,
-the agent expands that preview's own CSS and layout system into the full deck.
+Presets and bold templates are optional starting points for a visual brief,
+not the default. The agent reads the compact bold template index, loads a
+template's small `preview.md` only if it fits a brief, and loads the full
+`design.md` for exactly one template only after the user picks it.
 
 ## Bold Template Gallery
 
@@ -509,19 +504,24 @@ Everything the agent uses is in `skills/frontend-slides/`:
 | File | Purpose | Loaded When |
 | --- | --- | --- |
 | `SKILL.md` | Core workflow and rules | Always (skill invocation) |
-| `STYLE_PRESETS.md` | 12 curated visual presets | Phase 2 (style selection) |
-| `bold-template-pack/selection-index.json` | Compact bold template metadata for candidate selection | Phase 2 (style selection) |
-| `bold-template-pack/templates/*/preview.md` | Tiny style cards for shortlisted bold previews | Phase 2 after shortlisting |
-| `bold-template-pack/templates/*/design.md` | Full design system for the selected bold template | Phase 3 after user selection |
-| `reference/runtime.md` | Markup contract, keys, build steps, notes, checker output | Phase 3 (generation) |
-| `reference/images.md` | Image processing and placement | Phase 3, only with images |
-| `animation-patterns.md` | CSS animation reference | Phase 3 (generation) |
-| `runtime/deck.css`, `runtime/deck.js` | Shared runtime, inlined into every deck | Never read; inlined by the scaffold |
-| `scripts/new-deck.mjs` | Scaffold a deck, or `--upgrade` its runtime | Phase 2 and 3 |
-| `scripts/check-deck.mjs` | Render, check and screenshot every slide | Phase 3 (verify) |
-| `scripts/export-pdf.mjs` | Export slides to PDF | Phase 6 (sharing) |
-| `scripts/extract-pptx.py` | PPT content extraction | Phase 4 (conversion) |
-| `scripts/deploy.sh` | Deploy to Vercel | Phase 6 (sharing) |
+| `reference/design-principles.md` | Visual brief, design traditions, composition, critique checklist | Before any preview |
+| `reference/anti-ai-tells.md` | What makes slides look generated, and what to do instead | Before designing |
+| `reference/typography.md`, `reference/color.md` | Type pairings and palettes by tradition, scale and detail | Writing the brief |
+| `reference/layouts.md` | The 18 layouts, their markup and tokens | Building |
+| `reference/writing.md` | Assertion headings, specific copy, words to avoid | Building |
+| `reference/motion.md` | When and how slides should move | Only if something moves |
+| `reference/runtime.md` | Markup contract, keys, build steps, notes, checker output | Building |
+| `reference/images.md` | Image processing and placement | Only with images |
+| `STYLE_PRESETS.md` | 12 preset starting points | Optional, writing briefs |
+| `bold-template-pack/selection-index.json` | Compact bold template metadata | Optional, writing briefs |
+| `bold-template-pack/templates/*/preview.md` | Small style cards for a shortlisted template | Optional, after shortlisting |
+| `bold-template-pack/templates/*/design.md` | Full design system for the selected bold template | After the user picks it |
+| `runtime/deck.css`, `runtime/deck.js`, `runtime/layouts.css` | Shared runtime and layout library, inlined into every deck | Never read; inlined by the scaffold |
+| `scripts/new-deck.mjs` | Scaffold a deck, or `--upgrade` its runtime | Previews and build |
+| `scripts/check-deck.mjs` | Render, check, design-lint and screenshot every slide | Check step |
+| `scripts/export-pdf.mjs` | Export slides to PDF | Sharing |
+| `scripts/extract-pptx.py` | PPT content extraction | PowerPoint conversion |
+| `scripts/deploy.sh` | Deploy to Vercel | Sharing |
 
 Outside the skill: `examples/` holds decks built with it, and `tests/` holds the browser tests for the runtime and the checker (`npm install && npm test`). CI runs them and checks every example deck.
 

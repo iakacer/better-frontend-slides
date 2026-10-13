@@ -26,5 +26,6 @@ for (const name of examples) {
         const errors = [...report.global, ...report.slides.flatMap((s) => s.issues.map((i) => ({ slide: s.index + 1, ...i })))]
             .filter((i) => i.severity === 'error' && i.type !== 'font-failed');
         assert.deepEqual(errors, []);
+        assert.deepEqual(report.design, [], 'examples must pass the design lint');
     });
 }
