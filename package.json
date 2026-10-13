@@ -1,0 +1,17 @@
+{
+  "name": "better-frontend-slides",
+  "private": true,
+  "type": "module",
+  "description": "Development tooling for the frontend-slides skill. End users never need to install this.",
+  "scripts": {
+    "test": "node --test --test-reporter=spec tests/*.test.mjs",
+    "check": "node skills/frontend-slides/scripts/check-deck.mjs",
+    "upgrade-examples": "for f in examples/*.html; do node skills/frontend-slides/scripts/new-deck.mjs --upgrade \"$f\"; done"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

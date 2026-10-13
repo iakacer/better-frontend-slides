@@ -1,18 +1,25 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "frontend-slides",
-  "description": "Create stunning, animation-rich HTML presentations from scratch or by converting PowerPoint files.",
+  "description": "Zero-dependency HTML slide decks that don't look AI-made.",
   "owner": {
-    "name": "zarazhangrui",
-    "url": "https://github.com/zarazhangrui"
+    "name": "iakacer",
+    "url": "https://github.com/iakacer"
   },
   "plugins": [
     {
       "name": "frontend-slides",
-      "description": "Zero-dependency HTML presentation generator with safe presets, bold template-library styles, PPT conversion, and anti-AI-slop design philosophy.",
-      "source": "./plugins/frontend-slides",
+      "description": "Zero-dependency HTML slide decks with a shared tested runtime, a layout checker, and design guidance that avoids the generic AI look.",
+      "source": "./",
       "category": "productivity",
-      "tags": ["presentations", "slides", "html", "design", "powerpoint", "templates"]
+      "tags": [
+        "presentations",
+        "slides",
+        "html",
+        "design",
+        "powerpoint",
+        "templates"
+      ]
     }
   ]
 }

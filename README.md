@@ -2,6 +2,8 @@
 
 A coding-agent skill for creating stunning HTML presentations — from scratch or by converting PowerPoint files. It is packaged as a Claude Code plugin, and the core `SKILL.md` can also be read by other coding agents with filesystem and shell access.
 
+> **This is Better Frontend Slides**, a successor to [zarazhangrui/frontend-slides](https://github.com/zarazhangrui/frontend-slides) under active development. New so far: a shared, tested deck runtime (presenter view, overview, deep links, build steps, print-to-PDF, accessibility), a scaffold script so agents only write slides, and a checker that renders every slide and reports overflow, overlap and contrast problems with screenshots. Design work on decks that don't look AI-made comes next. See [`examples/`](examples/) for a deck built this way.
+
 ## 📺 Watch the Walkthrough & Tutorial
 
 New here? This beginner-friendly video walks you through the whole thing, start to finish.
@@ -27,6 +29,8 @@ https://github.com/user-attachments/assets/ef57333e-f879-432a-afb9-180388982478
 - **PPT Conversion** — Convert existing PowerPoint files to web, preserving all images and content.
 - **Anti-AI-Slop** — Curated distinctive styles that avoid generic AI aesthetics (bye-bye, purple gradients on white).
 - **Bold Template Pack** — Optional design-forward templates from `beautiful-html-templates`, loaded progressively so safe presets still work as the default fallback.
+- **Shared Runtime** — Presenter view with notes and timer, overview grid, deep links, build steps, inline editing and one-page-per-slide PDF, tested and inlined into every deck.
+- **Checked Before You See It** — `check-deck` renders every slide, flags overflow, overlap, clipping and low contrast, and writes screenshots the agent reviews.
 - **Production Quality** — Accessible, fixed 16:9, well-commented code you can customize.
 
 ## Installation
@@ -36,7 +40,7 @@ https://github.com/user-attachments/assets/ef57333e-f879-432a-afb9-180388982478
 Install directly from this public GitHub repo. Run these as two separate Claude Code messages; do not paste both lines into the prompt at once.
 
 ```text
-/plugin marketplace add https://github.com/zarazhangrui/frontend-slides
+/plugin marketplace add https://github.com/iakacer/better-frontend-slides
 ```
 
 After that finishes, run:
@@ -45,28 +49,17 @@ After that finishes, run:
 /plugin install frontend-slides@frontend-slides
 ```
 
-Use the HTTPS URL. The shorter `zarazhangrui/frontend-slides` form may make Claude Code try SSH, which can fail if GitHub is not already in your `known_hosts` file.
+Use the HTTPS URL. The shorter `iakacer/better-frontend-slides` form may make Claude Code try SSH, which can fail if GitHub is not already in your `known_hosts` file.
 
 Then use it by typing `/frontend-slides:frontend-slides` in Claude Code. Claude Code namespaces plugin-installed skills as `/plugin-name:skill-name`.
 
 ### Claude Code Manual Installation
 
-Copy the skill files to your Claude Code skills directory:
+The whole skill lives in `skills/frontend-slides/`. Copy that folder into your skills directory:
 
 ```bash
-# Create the skill directory
-mkdir -p ~/.claude/skills/frontend-slides/scripts
-
-# Copy the user-facing skill files
-cp SKILL.md STYLE_PRESETS.md viewport-base.css html-template.md animation-patterns.md ~/.claude/skills/frontend-slides/
-cp -R bold-template-pack ~/.claude/skills/frontend-slides/
-cp scripts/extract-pptx.py scripts/deploy.sh scripts/export-pdf.sh ~/.claude/skills/frontend-slides/scripts/
-```
-
-Or clone directly:
-
-```bash
-git clone https://github.com/zarazhangrui/frontend-slides.git ~/.claude/skills/frontend-slides
+git clone https://github.com/iakacer/better-frontend-slides.git /tmp/better-frontend-slides
+cp -R /tmp/better-frontend-slides/skills/frontend-slides ~/.claude/skills/
 ```
 
 Then use it by typing `/frontend-slides` in Claude Code. Standalone skills are not namespaced.
@@ -76,17 +69,10 @@ Then use it by typing `/frontend-slides` in Claude Code. Standalone skills are n
 Agents such as Codex, Kimi Code, OpenCode, Gemini CLI, or other local coding assistants can use the same core skill. The simplest path is to send the agent this GitHub repo link and ask it to use the Frontend Slides skill:
 
 ```text
-https://github.com/zarazhangrui/frontend-slides
+https://github.com/iakacer/better-frontend-slides
 ```
 
-If the agent can read GitHub repos or browse files, it should start from `SKILL.md` and load only the referenced support files it needs:
-
-- `STYLE_PRESETS.md`
-- `viewport-base.css`
-- `html-template.md`
-- `animation-patterns.md`
-- `bold-template-pack/`
-- `scripts/`
+If the agent can read GitHub repos or browse files, it should start from `skills/frontend-slides/SKILL.md` and load only the referenced support files it needs. Tools that install skills from a repo's `skills/` folder pick it up automatically.
 
 Some agents can also install the skill for you if they have filesystem access and a known local skills directory. If not, they can still follow `SKILL.md` directly for the current session.
 
@@ -518,19 +504,26 @@ Frontend Slides can now draw from the 34 bold design systems in [`beautiful-html
 
 This skill uses **progressive disclosure** — the main `SKILL.md` is a workflow map, with supporting files loaded on-demand only when needed:
 
-| File                      | Purpose                        | Loaded When               |
-| ------------------------- | ------------------------------ | ------------------------- |
-| `SKILL.md`                | Core workflow and rules        | Always (skill invocation) |
-| `STYLE_PRESETS.md`        | 12 curated visual presets      | Phase 2 (style selection) |
+Everything the agent uses is in `skills/frontend-slides/`:
+
+| File | Purpose | Loaded When |
+| --- | --- | --- |
+| `SKILL.md` | Core workflow and rules | Always (skill invocation) |
+| `STYLE_PRESETS.md` | 12 curated visual presets | Phase 2 (style selection) |
 | `bold-template-pack/selection-index.json` | Compact bold template metadata for candidate selection | Phase 2 (style selection) |
 | `bold-template-pack/templates/*/preview.md` | Tiny style cards for shortlisted bold previews | Phase 2 after shortlisting |
 | `bold-template-pack/templates/*/design.md` | Full design system for the selected bold template | Phase 3 after user selection |
-| `viewport-base.css`       | Mandatory fixed-stage CSS      | Phase 3 (generation)      |
-| `html-template.md`        | HTML structure and JS features | Phase 3 (generation)      |
-| `animation-patterns.md`   | CSS/JS animation reference     | Phase 3 (generation)      |
-| `scripts/extract-pptx.py` | PPT content extraction         | Phase 4 (conversion)      |
-| `scripts/deploy.sh`       | Deploy to Vercel               | Phase 6 (sharing)         |
-| `scripts/export-pdf.sh`   | Export slides to PDF           | Phase 6 (sharing)         |
+| `reference/runtime.md` | Markup contract, keys, build steps, notes, checker output | Phase 3 (generation) |
+| `reference/images.md` | Image processing and placement | Phase 3, only with images |
+| `animation-patterns.md` | CSS animation reference | Phase 3 (generation) |
+| `runtime/deck.css`, `runtime/deck.js` | Shared runtime, inlined into every deck | Never read; inlined by the scaffold |
+| `scripts/new-deck.mjs` | Scaffold a deck, or `--upgrade` its runtime | Phase 2 and 3 |
+| `scripts/check-deck.mjs` | Render, check and screenshot every slide | Phase 3 (verify) |
+| `scripts/export-pdf.mjs` | Export slides to PDF | Phase 6 (sharing) |
+| `scripts/extract-pptx.py` | PPT content extraction | Phase 4 (conversion) |
+| `scripts/deploy.sh` | Deploy to Vercel | Phase 6 (sharing) |
+
+Outside the skill: `examples/` holds decks built with it, and `tests/` holds the browser tests for the runtime and the checker (`npm install && npm test`). CI runs them and checks every example deck.
 
 Maintenance-only source metadata and regeneration helpers live outside the
 user-facing skill package. Normal users do not need them.
@@ -571,11 +564,11 @@ Uses [Vercel](https://vercel.com) (free tier). The skill walks you through signu
 Convert your slides to a PDF for email, Slack, Notion, or printing:
 
 ```bash
-bash scripts/export-pdf.sh ./my-deck/index.html
-bash scripts/export-pdf.sh ./presentation.html ./output.pdf
+node scripts/export-pdf.mjs ./my-deck/index.html
+node scripts/export-pdf.mjs ./presentation.html ./output.pdf
 ```
 
-Uses [Playwright](https://playwright.dev) to screenshot each slide at 1920×1080 and combine into a PDF. Installs automatically if needed. Animations are not preserved (it's a static snapshot).
+One page per slide with every build step shown. Text stays selectable and files stay small; add `--raster` to screenshot each slide instead. Uses [Playwright](https://playwright.dev), which installs automatically if needed.
 
 ## Requirements
 
@@ -583,11 +576,12 @@ Uses [Playwright](https://playwright.dev) to screenshot each slide at 1920×1080
 - Claude Code is required only for the custom marketplace-source install and `/frontend-slides:frontend-slides` command
 - For PPT conversion: Python with `python-pptx` library
 - For URL deployment: Node.js + Vercel account (free)
-- For PDF export: Node.js (Playwright installs automatically)
+- For scaffolding and checking decks: Node.js 20+
+- For checking and PDF export: Playwright (installs automatically on first use)
 
 ## Credits
 
-Created by [@zarazhangrui](https://github.com/zarazhangrui).
+Originally created by [@zarazhangrui](https://github.com/zarazhangrui) as [frontend-slides](https://github.com/zarazhangrui/frontend-slides). Better Frontend Slides is maintained by [@iakacer](https://github.com/iakacer).
 
 ## License
 
